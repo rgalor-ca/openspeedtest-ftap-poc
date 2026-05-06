@@ -1,387 +1,285 @@
 # FTAP OpenSpeedTest POC Documentation
 
-This document explains the FTAP OpenSpeedTest POC architecture, runtime behavior, setup, testing strategy, validation scenarios, edge cases, troubleshooting, and build process.
+This document is the detailed technical guide for the FTAP OpenSpeedTest POC. It explains the architecture, setup, runtime behavior, build process, deployment flow, validation strategy, edge cases, troubleshooting, and production considerations.
 
-## 1. Purpose
+## 1. Project Purpose
 
-The purpose of this POC is to provide a hybrid mobile app that can run a basic speed test using the open-source OpenSpeedTest server.
+FTAP OpenSpeedTest POC is a hybrid mobile proof of concept for running a basic speed test through an open-source OpenSpeedTest server.
 
-The app does not reimplement the network measurement engine. Instead, it embeds the OpenSpeedTest server page and starts the OpenSpeedTest flow with the `Run` query parameter.
+The app does not reimplement packet measurement, upload/download measurement, ping, or jitter calculation. OpenSpeedTest already provides the browser-based speed-test engine. The FTAP app provides:
 
-This approach is recommended for the POC because OpenSpeedTest already provides the browser-based download, upload, ping, and jitter test behavior. The mobile app is responsible for:
+- A branded FTAP mobile shell.
+- A native Android package through Capacitor.
+- A local browser development workflow.
+- A Docker-based OpenSpeedTest server workflow.
+- A hosted GitHub Pages shell for remote access.
+- Server URL management.
+- Immediate and visible app status feedback.
+- Dark and light mode.
+- One-screen responsive UI with no app-level scrolling across validated viewports.
 
-- Launching the test experience.
-- Managing the server URL.
-- Showing clear loading and error states.
-- Providing a hybrid Android shell.
-- Supporting local browser and emulator validation.
-- Providing a polished FTAP shell with dark mode by default and a persisted light/dark toggle.
+The upstream reference is:
 
-## 2. Visual Architecture
+[https://github.com/openspeedtest/Speed-Test](https://github.com/openspeedtest/Speed-Test)
 
-### Current Browser Validation Screenshot
+This is not an Ookla product. The correct product name in this repository is `FTAP OpenSpeedTest POC`.
+
+## 2. Current Visuals
+
+### Local Browser Screenshot
 
 ![FTAP OpenSpeedTest POC local browser screenshot](images/local-browser-ftap-poc.png)
 
-This screenshot was captured from the local app at `http://127.0.0.1:4200` after starting the test against the local OpenSpeedTest server on port `3000`.
+### Android Emulator Screenshot
 
 ![FTAP OpenSpeedTest POC Android emulator screenshot](images/android-emulator-loaded.png)
 
-This screenshot was captured from the installed debug APK running in the Android emulator after loading OpenSpeedTest through `http://10.0.2.2:3000`.
-
-### System Architecture
+## 3. System Context
 
 ```mermaid
 flowchart TB
-  subgraph Host["Developer Machine"]
+  subgraph "Developer Machine"
     Docker["Docker Desktop"]
-    OST["OpenSpeedTest Container<br/>ports 3000 and 3001"]
-    Angular["Angular Dev Server<br/>http://127.0.0.1:4200"]
-    APK["Debug APK<br/>FTAP-OpenSpeedTest-POC-debug.apk"]
+    OST["OpenSpeedTest container<br>ports 3000 and 3001"]
+    Angular["Angular dev server<br>http://127.0.0.1:4200"]
+    Repo["Git repository<br>source, docs, APK"]
   end
 
-  subgraph App["FTAP OpenSpeedTest POC"]
+  subgraph "FTAP Hybrid App"
     UI["Ionic Angular UI"]
-    State["Status and URL State"]
-    Iframe["Embedded iframe<br/>OpenSpeedTest ?Run URL"]
+    State["Signals<br>URL, status, theme"]
+    Frame["OpenSpeedTest iframe"]
   end
 
-  subgraph Android["Android Emulator or Device"]
+  subgraph "Android Runtime"
+    APK["Debug APK"]
     WebView["Capacitor WebView"]
+  end
+
+  subgraph "GitHub"
+    Pages["GitHub Pages"]
+    Actions["GitHub Actions"]
   end
 
   Docker --> OST
   Angular --> UI
+  Repo --> Actions
+  Actions --> Pages
   UI --> State
-  State --> Iframe
-  APK --> Android
-  Android --> WebView
+  State --> Frame
+  APK --> WebView
   WebView --> UI
-  Iframe -->|"HTTP local POC traffic"| OST
+  Frame --> OST
+  Pages --> UI
 ```
 
-## 3. Component Responsibilities
+## 4. Component Architecture
 
 ```mermaid
 flowchart LR
-  AppTs["src/app/app.ts<br/>state, validation, URL handling"]
-  AppHtml["src/app/app.html<br/>Ionic UI and iframe"]
-  AppScss["src/app/app.scss<br/>responsive styling"]
-  CapConfig["capacitor.config.ts<br/>app id, app name, HTTP WebView settings"]
-  Manifest["AndroidManifest.xml<br/>internet permission and cleartext setting"]
-  DockerCompose["docker-compose.yml<br/>OpenSpeedTest server"]
+  AppTs["src/app/app.ts<br>state, URL normalization, validation, iframe control"]
+  AppHtml["src/app/app.html<br>Ionic layout, buttons, status, iframe"]
+  AppScss["src/app/app.scss<br>responsive visual system"]
+  Styles["src/styles.scss<br>Ionic CSS and root theme defaults"]
+  Cap["capacitor.config.ts<br>app id, app name, WebView settings"]
+  Manifest["AndroidManifest.xml<br>internet and cleartext traffic"]
+  Compose["docker-compose.yml<br>OpenSpeedTest container"]
+  Pages[".github/workflows/pages.yml<br>GitHub Pages deployment"]
 
   AppTs --> AppHtml
   AppHtml --> AppScss
-  AppTs --> CapConfig
-  CapConfig --> Manifest
-  DockerCompose --> AppTs
+  AppScss --> Styles
+  AppTs --> Cap
+  Cap --> Manifest
+  Compose --> AppTs
+  Pages --> AppTs
 ```
 
 | File | Responsibility |
 | --- | --- |
-| `src/app/app.ts` | URL validation, local storage, app status, iframe URL generation, start/stop/reload behavior |
-| `src/app/app.html` | Header, server URL input, buttons, status text, empty/loading states, iframe |
-| `src/app/app.scss` | Mobile-first layout, control panel styling, test frame container, status UI |
-| `capacitor.config.ts` | Capacitor app id, app display name, web output path, Android cleartext/mixed-content behavior |
-| `android/app/src/main/AndroidManifest.xml` | Android internet permission and cleartext traffic support |
-| `docker-compose.yml` | Local OpenSpeedTest Docker server |
-
-## 4. Technology Decisions
-
-### Why Ionic Angular
-
-Ionic Angular is suitable for this POC because it provides:
-
-- Mobile UI components.
-- Familiar Angular structure.
-- Fast local browser iteration.
-- Native Android packaging through Capacitor.
-
-### Why Capacitor
-
-Capacitor is used because the target delivery is a hybrid Android APK. Capacitor wraps the Angular app inside an Android WebView while still allowing native build, install, and emulator testing.
-
-### Why OpenSpeedTest Docker
-
-OpenSpeedTest already provides the speed-test server and browser measurement flow. Running it through Docker keeps the POC simple, reproducible, and close to the upstream open-source project.
+| `src/app/app.ts` | Holds app state, URL validation, saved server URL, theme mode, start/stop/reload behavior, iframe URL creation |
+| `src/app/app.html` | Defines the Ionic UI, toolbar, server input, action buttons, status row, empty state, loading overlay, and iframe |
+| `src/app/app.scss` | Provides dark/light themes, one-screen responsive layout, button sizing, panel sizing, and iframe shell styling |
+| `src/styles.scss` | Imports Ionic CSS and defines baseline root styling |
+| `capacitor.config.ts` | Defines Capacitor app id/name, web output path, and local HTTP WebView settings |
+| `android/app/src/main/AndroidManifest.xml` | Enables internet permission and cleartext traffic for local HTTP POC testing |
+| `docker-compose.yml` | Runs the local OpenSpeedTest server and names the Docker stack `ftap-openspeedtest-poc` |
+| `.github/workflows/pages.yml` | Builds and deploys the static web app to GitHub Pages |
 
 ## 5. Runtime Flow
 
 ```mermaid
-flowchart TD
-  Idle["Idle<br/>No active test"]
-  Input["User confirms server URL"]
-  Validate["Validate URL<br/>http or https only"]
-  Invalid["Invalid URL<br/>show error"]
-  Starting["Starting<br/>show status immediately"]
-  Loading["Loading iframe<br/>serverUrl/?Run&_t=timestamp"]
-  Loaded["Loaded<br/>OpenSpeedTest UI visible"]
-  Timeout["Timeout<br/>show network or server error"]
-  Stop["Stop<br/>clear iframe and return idle"]
-  Restart["Restart<br/>clear iframe and create new timestamped URL"]
+sequenceDiagram
+  participant U as User
+  participant A as FTAP App
+  participant Store as Local Storage
+  participant Frame as iframe
+  participant S as OpenSpeedTest Server
 
-  Idle --> Input
-  Input --> Validate
-  Validate -->|invalid| Invalid
-  Validate -->|valid| Starting
-  Starting --> Loading
-  Loading -->|iframe load| Loaded
-  Loading -->|12 second timeout| Timeout
-  Starting -->|Stop| Stop
-  Loading -->|Stop| Stop
-  Loaded -->|Stop| Stop
-  Loaded -->|Restart| Restart
-  Restart --> Validate
-  Stop --> Idle
-  Invalid --> Input
-  Timeout --> Input
+  U->>A: Open app
+  A->>Store: Read saved server URL and theme
+  Store-->>A: Return saved values or defaults
+  A-->>U: Render dark UI and idle state
+  U->>A: Tap Start test
+  A->>A: Normalize and validate URL
+  A-->>U: Show starting status immediately
+  A->>Frame: Assign server URL with Run and timestamp query params
+  Frame->>S: Request OpenSpeedTest page
+  S-->>Frame: Return speed-test UI and static assets
+  Frame-->>A: Load event
+  A-->>U: Show loaded status
+  U->>Frame: Interacts with OpenSpeedTest test
 ```
 
-## 6. User Workflow
+## 6. App State Machine
 
 ```mermaid
-sequenceDiagram
-  participant User
-  participant App as FTAP App
-  participant Storage as Browser Local Storage
-  participant Server as OpenSpeedTest Server
-
-  User->>App: Opens app
-  App->>Storage: Read saved server URL
-  Storage-->>App: Saved URL or default URL
-  App-->>User: Show server URL and idle state
-  User->>App: Tap Start test
-  App->>App: Validate URL
-  App-->>User: Show starting status
-  App->>Server: Load iframe with ?Run
-  Server-->>App: OpenSpeedTest page loaded
-  App-->>User: Show loaded status
-  User->>Server: Runs speed test inside embedded UI
+stateDiagram-v2
+  [*] --> idle
+  idle --> starting: Start with valid URL
+  idle --> error: Start with invalid URL
+  starting --> loading: Delay completed and iframe assigned
+  starting --> idle: Stop
+  loading --> loaded: iframe load event
+  loading --> error: load timeout
+  loading --> idle: Stop
+  loaded --> loading: Reload
+  loaded --> starting: Restart
+  loaded --> idle: Stop
+  error --> starting: Retry with valid URL
+  error --> idle: Stop
 ```
 
-## 7. Network URL Rules
-
-| Environment | Server URL |
+| State | User-Facing Meaning |
 | --- | --- |
-| Local browser on same machine | `http://127.0.0.1:3000` |
-| Browser on another device in same LAN | `http://<computer-lan-ip>:3000` |
-| Android emulator on same Windows host | `http://10.0.2.2:3000` |
-| Physical Android phone on same Wi-Fi | `http://<computer-lan-ip>:3000` |
-| GitHub Pages remote access | Public HTTPS OpenSpeedTest server URL |
+| `idle` | No test is active |
+| `starting` | The user clicked Start and the app is preparing the iframe |
+| `loading` | The iframe is loading OpenSpeedTest |
+| `loaded` | The iframe load event completed and the test UI should be visible |
+| `error` | URL validation failed or the server did not finish loading in time |
 
-Important behavior:
+## 7. URL Decision Tree
 
-- `127.0.0.1` in Chrome on Windows means the Windows host.
-- `127.0.0.1` inside the Android emulator means the emulator itself.
-- Android emulator uses `10.0.2.2` as an alias to the host machine.
-- Physical devices usually need the LAN IP of the computer running Docker.
-- GitHub Pages is served over HTTPS, so remote users need an HTTPS OpenSpeedTest server. A private LAN or HTTP-only server will not work reliably from the hosted page.
+```mermaid
+flowchart TD
+  Start["Need a server URL"]
+  Env{"Where is the app running?"}
+  Local["Local Chrome on the same computer"]
+  Emulator["Android emulator on the same Windows host"]
+  Phone["Physical phone on the same Wi-Fi"]
+  Pages["GitHub Pages or remote browser"]
+  LocalUrl["Use http://127.0.0.1:3000"]
+  EmulatorUrl["Use http://10.0.2.2:3000"]
+  PhoneUrl["Use http://<host-lan-ip>:3000"]
+  PublicUrl["Use public HTTPS OpenSpeedTest server URL"]
+  Bad["Do not use private LAN or HTTP-only URL for public remote users"]
 
-## GitHub Pages Deployment
+  Start --> Env
+  Env --> Local --> LocalUrl
+  Env --> Emulator --> EmulatorUrl
+  Env --> Phone --> PhoneUrl
+  Env --> Pages --> PublicUrl
+  Pages --> Bad
+```
 
-The repository includes a GitHub Actions workflow at `.github/workflows/pages.yml`.
+## 8. Network Rules
 
-Deployment flow:
+| Runtime | Correct URL | Why |
+| --- | --- | --- |
+| Windows Chrome, Docker on same Windows host | `http://127.0.0.1:3000` | Chrome resolves localhost to Windows |
+| Android emulator, Docker on Windows host | `http://10.0.2.2:3000` | Android emulator maps `10.0.2.2` to the host machine |
+| Physical Android phone, Docker on Windows host | `http://<host-lan-ip>:3000` | The phone is a separate LAN device |
+| GitHub Pages | Public HTTPS URL | Pages is HTTPS and remote users cannot reach private LAN hosts |
+
+Incorrect examples:
+
+| URL | Problem |
+| --- | --- |
+| `127.0.0.1:3000` | Missing protocol |
+| `ftp://example.com` | Unsupported protocol |
+| `http://127.0.0.1:3000` in emulator | Points to the emulator, not Windows |
+| `http://192.168.x.x:3000` from a remote public user | Private LAN address is not reachable from the internet |
+| `http://public-server.example.com` from GitHub Pages | May be blocked as mixed content because Pages is HTTPS |
+
+## 9. Docker Server Flow
 
 ```mermaid
 flowchart LR
-  Push["Push to main"]
-  Actions["GitHub Actions"]
+  Compose["docker compose up -d"]
+  Project["Compose project<br>ftap-openspeedtest-poc"]
+  Container["openspeedtest container"]
+  Ports["3000 and 3001 exposed"]
+  Browser["Browser or WebView"]
+
+  Compose --> Project --> Container --> Ports --> Browser
+```
+
+Docker Compose:
+
+```yaml
+name: ftap-openspeedtest-poc
+
+services:
+  openspeedtest:
+    image: openspeedtest/latest
+    container_name: openspeedtest
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+      - '3001:3001'
+```
+
+Validate:
+
+```bash
+docker compose ps
+```
+
+Expected project name:
+
+```text
+ftap-openspeedtest-poc
+```
+
+Expected local server:
+
+```text
+http://127.0.0.1:3000/
+```
+
+## 10. GitHub Pages Deployment Flow
+
+```mermaid
+flowchart LR
+  Commit["Commit to main"]
+  Push["Push to GitHub"]
+  Workflow["Deploy GitHub Pages workflow"]
+  Checkout["Checkout"]
+  Node["Setup Node 24"]
   Install["npm ci"]
   Build["npm run build:pages"]
   Artifact["Upload Pages artifact"]
-  Pages["Deploy GitHub Pages"]
+  Deploy["Deploy Pages"]
   Site["https://rgalor-ca.github.io/openspeedtest-ftap-poc/"]
 
-  Push --> Actions
-  Actions --> Install
-  Install --> Build
-  Build --> Artifact
-  Artifact --> Pages
-  Pages --> Site
+  Commit --> Push --> Workflow --> Checkout --> Node --> Install --> Build --> Artifact --> Deploy --> Site
 ```
 
-The Pages build uses:
+Why `build:pages` exists:
 
-```bash
-npm run build:pages
-```
-
-This builds Angular with the required repository base path:
+GitHub Pages hosts the app under the repository path:
 
 ```text
 /openspeedtest-ftap-poc/
 ```
 
-## 8. Android WebView HTTP Handling
+The Pages build sets this base path so Angular assets resolve correctly:
 
-Local OpenSpeedTest uses HTTP during POC testing. Android WebView can block local HTTP or mixed-content iframe behavior unless configured.
-
-The POC includes:
-
-```ts
-android: {
-  allowMixedContent: true,
-},
-server: {
-  cleartext: true,
-  allowNavigation: ['*'],
-},
+```bash
+npm run build:pages
 ```
 
-The Android manifest includes:
-
-```xml
-android:usesCleartextTraffic="true"
-```
-
-Why this is needed:
-
-- The Capacitor app runs inside a WebView.
-- The OpenSpeedTest server is loaded through an HTTP iframe.
-- Android can block HTTP content without cleartext/mixed-content settings.
-
-Production recommendation:
-
-- Serve OpenSpeedTest over HTTPS.
-- Replace `allowNavigation: ['*']` with a specific trusted domain.
-- Remove broad local development allowances.
-
-## 9. Application State Machine
-
-```mermaid
-stateDiagram-v2
-  [*] --> idle
-  idle --> starting: Start valid URL
-  idle --> error: Start invalid URL
-  starting --> loading: iframe URL assigned
-  starting --> idle: Stop
-  loading --> loaded: iframe load
-  loading --> error: timeout
-  loading --> idle: Stop
-  loaded --> starting: Restart
-  loaded --> idle: Stop
-  error --> starting: Retry valid URL
-  error --> idle: Stop
-```
-
-State meanings:
-
-| State | Meaning |
-| --- | --- |
-| `idle` | No active test is running |
-| `starting` | Start was clicked and the app is preparing the iframe URL |
-| `loading` | iframe URL is assigned and OpenSpeedTest is loading |
-| `loaded` | iframe load event completed and the OpenSpeedTest UI should be visible |
-| `error` | URL validation failed or iframe load timed out |
-
-## 10. Validation Matrix
-
-| Scenario | Expected Result | Validation Method |
-| --- | --- | --- |
-| App builds | Angular build completes | `npm run build` |
-| Capacitor sync | Android assets regenerate | `npx cap sync android` |
-| APK builds | Debug APK generated | `.\gradlew.bat assembleDebug` |
-| Local browser opens app | Browser title and UI show FTAP name | `http://127.0.0.1:4200` |
-| OpenSpeedTest server available | Server page responds on port 3000 | `http://127.0.0.1:3000` |
-| Valid server URL | Start button enters starting/loading state | UI validation |
-| Invalid server URL | App shows validation error | Manual/UI validation |
-| Android emulator URL | `10.0.2.2:3000` reaches host Docker server | Emulator validation |
-| Stop during start/loading | App returns to idle and ignores late iframe loads | Code guard and UI validation |
-| Restart after loaded | App creates a fresh timestamped test URL | UI validation |
-| Old branding removed | No old package/name references in source | Source scan |
-
-## 11. Edge Cases Checked
-
-### Invalid URL
-
-Input examples:
-
-```text
-not-a-url
-ftp://example.com
-```
-
-Expected behavior:
-
-- The app rejects the value.
-- The app shows an error message.
-- The iframe is not started.
-
-### Empty URL
-
-Expected behavior:
-
-- The app rejects the value.
-- The app does not attempt to load the iframe.
-
-### HTTP Server Not Running
-
-Expected behavior:
-
-- The app enters loading state.
-- If the iframe does not finish loading within the timeout window, the app shows an error.
-
-### Android Emulator Uses Wrong URL
-
-Example wrong value:
-
-```text
-http://127.0.0.1:3000
-```
-
-Expected behavior:
-
-- The emulator cannot reach the Windows host through `127.0.0.1`.
-- Use `http://10.0.2.2:3000` instead.
-
-### Stop During Loading
-
-Expected behavior:
-
-- Stop is enabled while a test is starting or loading.
-- The app clears the iframe URL.
-- Late iframe load events are ignored.
-
-### Restart After Loaded
-
-Expected behavior:
-
-- A new timestamp is added to the OpenSpeedTest URL.
-- Browser/WebView cache is bypassed.
-- The iframe reloads a fresh test.
-
-### Saved Server URL
-
-Expected behavior:
-
-- Saved URL persists in local storage.
-- Android defaults to `10.0.2.2:3000` when the old LAN default is missing or still saved.
-
-## 12. Build And Release Process
-
-```mermaid
-flowchart LR
-  Code["Edit source"]
-  Build["npm run build"]
-  Sync["npx cap sync android"]
-  APK["Gradle assembleDebug"]
-  Copy["Copy app-debug.apk<br/>to FTAP-OpenSpeedTest-POC-debug.apk"]
-  Validate["Install and validate"]
-  Commit["Commit source and APK"]
-  Push["Push to GitHub"]
-
-  Code --> Build
-  Build --> Sync
-  Sync --> APK
-  APK --> Copy
-  Copy --> Validate
-  Validate --> Commit
-  Commit --> Push
-```
-
-## 13. Step-By-Step Local Setup
+## 11. Local Development Setup
 
 1. Install dependencies.
 
@@ -389,39 +287,49 @@ flowchart LR
 npm install
 ```
 
-2. Start OpenSpeedTest.
+2. Start Docker Desktop.
+
+3. Start the OpenSpeedTest server.
 
 ```bash
 docker compose up -d
 ```
 
-3. Start Angular.
+4. Validate Docker.
+
+```bash
+docker compose ps
+```
+
+5. Validate OpenSpeedTest.
+
+```text
+http://127.0.0.1:3000/
+```
+
+6. Start the Angular dev server.
 
 ```bash
 npm start
 ```
 
-4. Open the local app.
+7. Open the local app.
 
 ```text
-http://127.0.0.1:4200
+http://127.0.0.1:4200/
 ```
 
-5. Use the proper server URL.
+8. In local Chrome, use:
 
 ```text
-Local Chrome:      http://127.0.0.1:3000
-Android emulator: http://10.0.2.2:3000
-Physical phone:   http://<host-lan-ip>:3000
+http://127.0.0.1:3000
 ```
 
-6. Tap Start test.
+9. Tap Start test.
 
-7. Confirm the status changes from starting to loading to loaded.
+10. Confirm the status changes from idle to starting, loading, and loaded.
 
-8. Run the OpenSpeedTest test inside the embedded frame.
-
-## 14. Step-By-Step APK Build
+## 12. Android Emulator Setup
 
 1. Build web assets.
 
@@ -435,7 +343,7 @@ npm run build
 npx cap sync android
 ```
 
-3. Build debug APK.
+3. Build the APK.
 
 ```powershell
 $env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
@@ -445,63 +353,262 @@ Push-Location android
 Pop-Location
 ```
 
-4. Copy the APK to the repository root.
+4. Copy the debug APK to the repository root.
 
 ```powershell
 Copy-Item -LiteralPath 'android\app\build\outputs\apk\debug\app-debug.apk' -Destination 'FTAP-OpenSpeedTest-POC-debug.apk' -Force
 ```
 
-## 15. Install APK On Emulator
+5. Install and launch.
 
 ```powershell
 adb install -r FTAP-OpenSpeedTest-POC-debug.apk
 adb shell monkey -p com.ftap.openspeedtestpoc -c android.intent.category.LAUNCHER 1
 ```
 
-If the app opens but the speed-test panel is blank:
+6. In the app, use:
 
-1. Confirm Docker is running.
-2. Confirm `http://127.0.0.1:3000` opens on Windows.
-3. Confirm the emulator app uses `http://10.0.2.2:3000`.
-4. Rebuild after Capacitor config changes.
-5. Reinstall the APK.
+```text
+http://10.0.2.2:3000
+```
 
-## 16. Troubleshooting
+## 13. Build And Release Process
+
+```mermaid
+flowchart TB
+  Source["Edit source and docs"]
+  WebBuild["npm run build"]
+  PagesBuild["npm run build:pages"]
+  Sync["npx cap sync android"]
+  Gradle["Gradle assembleDebug"]
+  Copy["Copy APK to repo root"]
+  Validate["Run validation matrix"]
+  Commit["Commit source, docs, and APK"]
+  Push["Push to GitHub"]
+  Pages["Verify GitHub Pages"]
+
+  Source --> WebBuild
+  Source --> PagesBuild
+  WebBuild --> Sync --> Gradle --> Copy
+  PagesBuild --> Validate
+  Copy --> Validate
+  Validate --> Commit --> Push --> Pages
+```
+
+## 14. Validation Process
+
+```mermaid
+flowchart TD
+  Start["Start validation"]
+  Source["Check working tree and source naming"]
+  Install["Dependency install or npm ci"]
+  Web["Build web app"]
+  Pages["Build Pages app"]
+  Docker["Verify Docker server"]
+  Browser["Verify local browser"]
+  Responsive["Verify responsive dimensions"]
+  Android["Sync and build Android APK"]
+  Metadata["Verify APK metadata"]
+  Emulator["Install and launch emulator app"]
+  Pass["Ready to commit and push"]
+
+  Start --> Source --> Install --> Web --> Pages --> Docker --> Browser --> Responsive --> Android --> Metadata --> Emulator --> Pass
+```
+
+## 15. Validation Matrix
+
+| Area | Scenario | Expected Result | Validation Method |
+| --- | --- | --- | --- |
+| Source | Repo clean before work | No unknown unrelated changes | `git status --short` |
+| Naming | App uses FTAP name | No old POC names in user-facing files | Source scan |
+| Dependencies | Dependencies install | npm completes without fatal errors | `npm install` or `npm ci` |
+| Web build | Production build | Angular build succeeds | `npm run build` |
+| Pages build | GitHub Pages build | Angular build succeeds with repo base path | `npm run build:pages` |
+| Docker | OpenSpeedTest container | Compose project is running | `docker compose ps` |
+| Server | OpenSpeedTest HTTP response | Server returns HTTP 200 | `http://127.0.0.1:3000/` |
+| Local app | Angular dev server | App returns HTTP 200 | `http://127.0.0.1:4200/` |
+| Responsive | Small phone | No app-level scroll, no horizontal overflow | Chrome device metrics `320x568` |
+| Responsive | Mobile | No app-level scroll, controls fit | Chrome device metrics `390x844` |
+| Responsive | Tablet | Layout uses available space cleanly | Chrome device metrics `768x1024` |
+| Responsive | Desktop | One-screen layout remains centered | Chrome device metrics `1366x768` |
+| Android sync | Capacitor assets copied | Android web assets updated | `npx cap sync android` |
+| APK build | Debug APK generated | Gradle build succeeds | `.\gradlew.bat assembleDebug` |
+| APK metadata | App id and label | Package is `com.ftap.openspeedtestpoc` and label is correct | `aapt dump badging` |
+| Emulator | APK launch | Main activity is focused | `adb shell monkey` and `dumpsys window` |
+| GitHub Pages | Hosted app | Hosted URL returns HTTP 200 | `Invoke-WebRequest` |
+
+## 16. Current Validation Run
+
+Validation date: May 6, 2026
+
+| Check | Result | Notes |
+| --- | --- | --- |
+| Remote sync | Passed | Local `main` and `origin/main` were aligned before changes |
+| Source branding scan | Passed | No tracked source/doc leftovers for old names such as `come-up-with-mobile-app-na` or old package ids |
+| Markdown/check diff hygiene | Passed | `git diff --check` passed, only line-ending warnings from Windows |
+| Dependency install | Passed | `npm ci` completed |
+| Security audit gate | Passed with residual moderate dev advisory | `npm audit --audit-level=high` returned success; npm still reports moderate dev-tool advisories through Angular CLI dependency chain |
+| Web production build | Passed | `npm run build` completed |
+| GitHub Pages build | Passed | `npm run build:pages` completed |
+| Docker server | Passed | `docker compose ps` showed `openspeedtest` running |
+| OpenSpeedTest server response | Passed | `http://127.0.0.1:3000/` returned HTTP 200 |
+| Local Angular app response | Passed | `http://127.0.0.1:4200/` returned HTTP 200 |
+| Browser valid start flow | Passed | `http://127.0.0.1:3000` reached `Speed test loaded` with one iframe |
+| Browser invalid URL flow | Passed | `not-a-url` was rejected and no iframe was created |
+| Theme persistence | Passed | Saved light mode persisted across reload and start flow |
+| Responsive phone | Passed | `320x568` viewport had no document or Ionic inner-scroll overflow |
+| Responsive mobile | Passed | `390x844` viewport had no document or Ionic inner-scroll overflow |
+| Responsive tablet | Passed | `768x1024` viewport had no document or Ionic inner-scroll overflow |
+| Responsive desktop | Passed | `1366x768` viewport had no document or Ionic inner-scroll overflow |
+| Capacitor sync | Passed | `npx cap sync android` completed |
+| Android debug APK build | Passed | `.\gradlew.bat assembleDebug` completed |
+| APK metadata | Passed | Package id `com.ftap.openspeedtestpoc`, label `FTAP OpenSpeedTest POC`, launch activity `.MainActivity` |
+| APK base href | Passed | APK `assets/public/index.html` uses `<base href="/">` |
+| Emulator install | Passed | `adb install -r FTAP-OpenSpeedTest-POC-debug.apk` completed |
+| Emulator launch | Passed | Focused activity was `com.ftap.openspeedtestpoc/.MainActivity` |
+| Emulator speed-test load | Passed | APK loaded OpenSpeedTest through `http://10.0.2.2:3000` and screenshot was refreshed |
+
+Unit test note: this app currently has no `*.spec.ts` files, so there is no unit-test suite to run. The validation above covers the implemented POC behavior through build, browser automation, Docker, Android APK, and emulator checks.
+
+Residual risk: `npm audit` reports moderate vulnerabilities in the Angular CLI development dependency chain. The app runtime bundle is not directly using that package path, `npm audit --audit-level=high` passes, and npm currently recommends a force fix path. That force path was not applied because it can destabilize the Angular toolchain without a clear runtime benefit for this POC.
+
+## 17. Edge Cases And Expected Behavior
+
+| Edge Case | Expected Behavior | Why |
+| --- | --- | --- |
+| Empty server URL | App shows validation error and does not set iframe URL | Prevents a blank iframe request |
+| Missing protocol | App rejects it | `new URL()` requires a real scheme for reliable behavior |
+| Unsupported protocol | App rejects it | Only `http://` and `https://` are valid for WebView/browser iframe use |
+| URL with trailing slash | App normalizes it | Avoids inconsistent saved values |
+| URL with query or hash | App strips query/hash when saving server URL | The app owns runtime query params like `Run` and `_t` |
+| Docker server stopped | App eventually shows load failure | The iframe cannot load the OpenSpeedTest server |
+| Emulator uses `127.0.0.1` | Test does not reach Windows Docker | Emulator localhost is isolated from host localhost |
+| Emulator uses `10.0.2.2` | Test can reach Windows Docker | Android emulator host alias |
+| GitHub Pages uses LAN URL | Remote users cannot access it | Private addresses are not internet routable |
+| GitHub Pages uses HTTP URL | Browser may block mixed content | Pages is HTTPS |
+| Stop while starting | App clears pending status transition | Prevents delayed iframe assignment |
+| Stop while loading | App clears iframe and load timeout | Avoids stale load state |
+| Late iframe load after stop | App ignores it | `onTestFrameLoad` checks current state |
+| Restart after loaded | App generates a fresh timestamp URL | Avoids cached iframe state |
+| Reload button with no active URL | App does nothing | Avoids invalid URL parsing |
+| Saved old LAN URL on Android | App falls back to emulator default if saved value is old LAN default | Avoids previous local default breaking emulator POC |
+| Light/dark toggle | Theme persists in local storage | User preference remains across sessions |
+
+## 18. Troubleshooting Decision Tree
+
+```mermaid
+flowchart TD
+  Problem["Problem: speed test does not show"]
+  Docker{"Does http://127.0.0.1:3000 work on Windows?"}
+  StartDocker["Start Docker Desktop and run docker compose up -d"]
+  Runtime{"Where is the app running?"}
+  Local["Local browser"]
+  Emulator["Android emulator"]
+  Pages["GitHub Pages"]
+  LocalFix["Use http://127.0.0.1:3000"]
+  EmulatorFix["Use http://10.0.2.2:3000"]
+  PagesFix["Use public HTTPS OpenSpeedTest server"]
+  Rebuild{"APK recently changed?"}
+  RebuildFix["Run npm run build, npx cap sync android, Gradle assembleDebug, reinstall APK"]
+  Done["Retest Start test"]
+
+  Problem --> Docker
+  Docker -->|No| StartDocker --> Done
+  Docker -->|Yes| Runtime
+  Runtime --> Local --> LocalFix --> Done
+  Runtime --> Emulator --> EmulatorFix --> Rebuild
+  Runtime --> Pages --> PagesFix --> Done
+  Rebuild -->|Yes| RebuildFix --> Done
+  Rebuild -->|No| Done
+```
+
+## 19. Common Problems
 
 | Problem | Likely Cause | Fix |
 | --- | --- | --- |
-| Blank speed-test panel on emulator | Android WebView cannot reach or render HTTP iframe | Use `10.0.2.2:3000`, confirm cleartext settings, rebuild APK |
-| Works in browser but not emulator | Wrong host URL inside emulator | Replace `127.0.0.1` with `10.0.2.2` |
-| App says invalid URL | Missing protocol or unsupported protocol | Use `http://` or `https://` |
-| Start does not visibly change state | Old build or browser cache | Rebuild, reload, confirm title and status text |
-| APK installs but old name appears | Old APK still installed | Uninstall or clear app, then install new APK |
-| Docker server unreachable | Container not running or port conflict | Run `docker compose ps`, restart Docker container |
+| App says invalid URL | Missing `http://` or `https://` | Enter a full URL |
+| Blank or empty test frame in emulator | Wrong server URL | Use `http://10.0.2.2:3000` |
+| Works locally but not on GitHub Pages | Private URL or mixed content | Use a public HTTPS OpenSpeedTest server |
+| Docker Desktop shows old project name | Old Compose project still running | Run old project down and start current compose file |
+| APK installs but old UI appears | Old APK or unsynced Capacitor assets | Rebuild web, sync Capacitor, rebuild APK, reinstall |
+| Start appears to do nothing | Old browser bundle or cached app | Hard reload browser or restart dev server |
+| GitHub Pages 404 for assets | Wrong Angular base href | Use `npm run build:pages` |
+| Android HTTP blocked | Cleartext or mixed content not enabled | Keep POC settings or move to HTTPS |
 
-## 17. Security Notes
+## 20. Security And Production Notes
 
-This POC intentionally allows local HTTP traffic so the emulator and LAN testing workflow is simple.
+The POC intentionally allows local HTTP traffic:
 
-Before production use:
+```ts
+android: {
+  allowMixedContent: true,
+},
+server: {
+  cleartext: true,
+  allowNavigation: ['*'],
+},
+```
 
-- Use HTTPS.
-- Restrict allowed navigation to the trusted speed-test domain.
-- Remove broad `allowNavigation: ['*']`.
-- Do not commit production secrets.
-- Sign release APKs with a release keystore.
-- Replace debug APK distribution with a release artifact process.
+This is suitable for a local POC. It is not the recommended production posture.
 
-## 18. Known POC Limitations
+For production:
 
-- The OpenSpeedTest UI runs inside an iframe.
-- The mobile app does not parse or store speed results.
-- The POC does not include authentication.
-- The included APK is a debug APK, not a production release build.
-- The local HTTP setup is for development and demonstration only.
+- Serve OpenSpeedTest over HTTPS.
+- Restrict `allowNavigation` to the exact trusted domain.
+- Remove broad wildcard navigation.
+- Sign a release APK with a release keystore.
+- Do not distribute debug APKs.
+- Add automated end-to-end tests.
+- Add a release pipeline that stores APKs as GitHub release assets instead of manually committing only debug artifacts.
 
-## 19. Recommended Next Enhancements
+## 21. Known POC Limitations
 
-- Add a native results screen if the team wants controlled FTAP-branded result history.
-- Add environment-based server URL configuration.
-- Add HTTPS support for non-local testing.
-- Add release signing and CI build workflow.
-- Add automated end-to-end tests for Start, Stop, invalid URL, and emulator URL scenarios.
+- The speed-test engine is embedded as an iframe.
+- The app does not store speed-test history.
+- The app does not parse detailed OpenSpeedTest results into native FTAP screens.
+- The APK is a debug artifact.
+- Public remote testing requires a public HTTPS OpenSpeedTest server.
+- Local HTTP support is intentionally enabled for the POC.
+
+## 22. Recommended Enhancements
+
+Recommended next steps if this moves beyond POC:
+
+1. Host OpenSpeedTest behind a real domain with HTTPS.
+2. Restrict Capacitor navigation to that domain.
+3. Add release signing for Android.
+4. Add a results capture flow if FTAP needs branded result history.
+5. Add E2E tests for URL validation, start, stop, restart, and theme persistence.
+6. Add CI jobs for Android APK build artifacts.
+7. Add environment-based defaults for local, staging, and production server URLs.
+
+## 23. Command Reference
+
+```bash
+npm install
+npm start
+npm run build
+npm run build:pages
+npx cap sync android
+docker compose up -d
+docker compose ps
+docker compose logs -f
+```
+
+PowerShell Android build:
+
+```powershell
+$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'
+$env:Path="$env:JAVA_HOME\bin;$env:Path"
+Push-Location android
+.\gradlew.bat assembleDebug
+Pop-Location
+Copy-Item -LiteralPath 'android\app\build\outputs\apk\debug\app-debug.apk' -Destination 'FTAP-OpenSpeedTest-POC-debug.apk' -Force
+```
+
+Android install and launch:
+
+```powershell
+adb install -r FTAP-OpenSpeedTest-POC-debug.apk
+adb shell monkey -p com.ftap.openspeedtestpoc -c android.intent.category.LAUNCHER 1
+```
