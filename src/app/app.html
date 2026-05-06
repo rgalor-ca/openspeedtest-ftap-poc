@@ -21,7 +21,7 @@
     </ion-toolbar>
   </ion-header>
 
-  <ion-content [fullscreen]="true" class="app-shell">
+  <ion-content [scrollY]="false" class="app-shell">
     <section class="control-panel">
       <div class="brand-row">
         <div class="brand-mark">
@@ -48,15 +48,15 @@
       <div class="actions">
         <ion-button class="primary-action" (click)="startTest()">
           <ion-icon slot="start" name="play-outline"></ion-icon>
-          {{ startButtonLabel() }}
+          <span class="button-label">{{ startButtonLabel() }}</span>
         </ion-button>
         <ion-button fill="outline" (click)="saveServer()">
           <ion-icon slot="start" name="save-outline"></ion-icon>
-          Save
+          <span class="button-label save-label">Save</span>
         </ion-button>
         <ion-button fill="clear" color="medium" (click)="stopTest()" [disabled]="testStatus() === 'idle'">
           <ion-icon slot="start" name="stop-circle-outline"></ion-icon>
-          Stop
+          <span class="button-label stop-label">Stop</span>
         </ion-button>
       </div>
 
@@ -86,6 +86,7 @@
           (load)="onTestFrameLoad()"
           allow="fullscreen"
           referrerpolicy="no-referrer"
+          scrolling="no"
         ></iframe>
       } @else if (!isTestLoading()) {
         <div class="empty-state">

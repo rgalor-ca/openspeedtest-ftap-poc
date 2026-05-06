@@ -2,6 +2,18 @@
   color: var(--app-ink);
 }
 
+:host,
+ion-content {
+  max-width: 100vw;
+  overflow: hidden;
+}
+
+ion-app {
+  height: 100dvh;
+  max-width: 100vw;
+  overflow: hidden;
+}
+
 .theme-dark {
   --app-ink: #eef6f3;
   --app-muted: #9aa7a4;
@@ -60,8 +72,8 @@ ion-toolbar {
   --background: color-mix(in srgb, var(--app-panel-solid) 90%, transparent);
   --border-color: transparent;
   --color: var(--app-ink);
-  --min-height: 4rem;
-  padding-inline: clamp(0.2rem, 2vw, 1.3rem);
+  --min-height: clamp(3rem, 7vh, 3.75rem);
+  padding-inline: clamp(0.2rem, 1.6vw, 1.1rem);
   border-bottom: 1px solid var(--app-line);
   backdrop-filter: blur(18px);
 }
@@ -76,6 +88,7 @@ ion-toolbar {
 
 ion-title {
   position: static;
+  width: auto;
   flex: 1 1 auto;
   min-width: 0;
   padding-inline: 0;
@@ -86,6 +99,8 @@ ion-title {
 }
 
 ion-buttons {
+  display: flex;
+  align-items: center;
   flex: 0 0 auto;
 }
 
@@ -110,28 +125,46 @@ ion-header ion-button:hover {
     linear-gradient(140deg, color-mix(in srgb, var(--app-accent) 18%, transparent), transparent 34%),
     linear-gradient(315deg, color-mix(in srgb, var(--app-warm) 12%, transparent), transparent 30%),
     var(--app-surface);
+  --overflow: hidden;
+}
+
+.app-shell::part(scroll) {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: clamp(0.55rem, 1.2vh, 0.95rem);
+  height: 100%;
+  overflow: hidden;
+  padding: clamp(0.55rem, 1.4vh, 1.15rem);
 }
 
 .control-panel {
   display: grid;
-  gap: 1rem;
+  width: min(100%, 62rem);
+  gap: clamp(0.42rem, 1.1vh, 0.8rem);
   min-width: 0;
-  padding: 1.1rem;
+  margin: 0 auto;
+  padding: 0;
   overflow: hidden;
 }
 
 .brand-row {
   display: grid;
-  grid-template-columns: 3.7rem minmax(0, 1fr);
+  grid-template-columns: clamp(2.35rem, 7vh, 3.6rem) minmax(0, 1fr);
   align-items: center;
-  gap: 0.95rem;
-  padding-top: 0.25rem;
+  gap: clamp(0.55rem, 1.8vw, 0.95rem);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.brand-row > div {
+  min-width: 0;
 }
 
 .brand-mark {
   display: grid;
-  width: 3.7rem;
-  height: 3.7rem;
+  width: clamp(2.35rem, 7vh, 3.6rem);
+  height: clamp(2.35rem, 7vh, 3.6rem);
   place-items: center;
   color: var(--app-accent);
   background:
@@ -143,14 +176,14 @@ ion-header ion-button:hover {
 }
 
 .brand-mark ion-icon {
-  width: 1.85rem;
-  height: 1.85rem;
+  width: clamp(1.25rem, 3.6vh, 1.85rem);
+  height: clamp(1.25rem, 3.6vh, 1.85rem);
 }
 
 .eyebrow {
-  margin: 0 0 0.3rem;
+  margin: 0 0 0.2rem;
   color: var(--app-accent);
-  font-size: 0.76rem;
+  font-size: clamp(0.62rem, 1.4vh, 0.76rem);
   font-weight: 800;
   letter-spacing: 0;
   text-transform: uppercase;
@@ -164,11 +197,12 @@ p {
 
 h1 {
   margin: 0;
-  max-width: 15ch;
-  font-size: clamp(1.65rem, 7vw, 3rem);
-  line-height: 1.02;
+  max-width: 100%;
+  font-size: clamp(1.25rem, min(5.5vw, 4.4vh), 2.55rem);
+  line-height: 1;
   font-weight: 860;
   overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .server-field {
@@ -177,9 +211,10 @@ h1 {
   --color: var(--app-ink);
   --highlight-color-focused: var(--app-accent);
   --inner-padding-end: 0.75rem;
-  --padding-bottom: 0.3rem;
+  --min-height: clamp(2.9rem, 7.2vh, 4.1rem);
+  --padding-bottom: clamp(0.05rem, 0.45vh, 0.25rem);
   --padding-start: 0.75rem;
-  --padding-top: 0.3rem;
+  --padding-top: clamp(0.05rem, 0.45vh, 0.25rem);
   border: 1px solid var(--app-line-strong);
   border-radius: 0.5rem;
   box-shadow: 0 18px 42px var(--app-shadow);
@@ -197,20 +232,30 @@ h1 {
 
 .actions {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.7rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.86fr) minmax(0, 0.78fr);
+  gap: clamp(0.42rem, 1.4vw, 0.7rem);
 }
 
 ion-button {
-  min-height: 2.95rem;
+  min-width: 0;
+  min-height: clamp(2.25rem, 6.2vh, 2.8rem);
+  margin: 0;
+  font-size: clamp(0.78rem, 1.45vh, 0.94rem);
   font-weight: 780;
   letter-spacing: 0;
   text-transform: none;
   --border-radius: 0.5rem;
+  --padding-end: clamp(0.45rem, 2.4vw, 1rem);
+  --padding-start: clamp(0.45rem, 2.4vw, 1rem);
+}
+
+.button-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .primary-action {
-  grid-column: 1 / -1;
   --background: var(--app-accent);
   --background-hover: var(--app-accent-strong);
   --background-activated: var(--app-accent-strong);
@@ -231,8 +276,11 @@ ion-button {
 .notice {
   margin: 0;
   color: var(--app-soft);
-  font-size: 0.9rem;
-  line-height: 1.4;
+  overflow: hidden;
+  font-size: clamp(0.72rem, 1.55vh, 0.9rem);
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 ion-text[color='success'] .notice {
@@ -248,13 +296,13 @@ ion-text[color='danger'] .notice {
   width: fit-content;
   align-items: center;
   gap: 0.55rem;
-  min-height: 2.1rem;
-  padding: 0.38rem 0.7rem;
+  min-height: clamp(1.65rem, 4.5vh, 2.05rem);
+  padding: 0.3rem 0.62rem;
   color: var(--app-muted);
   background: color-mix(in srgb, var(--app-panel) 78%, transparent);
   border: 1px solid var(--app-line-strong);
   border-radius: 0.5rem;
-  font-size: 0.84rem;
+  font-size: clamp(0.72rem, 1.45vh, 0.84rem);
   font-weight: 780;
   box-shadow: 0 10px 24px color-mix(in srgb, var(--app-shadow) 72%, transparent);
 }
@@ -278,9 +326,10 @@ ion-text[color='danger'] .notice {
 
 .test-shell {
   position: relative;
-  height: calc(100dvh - 18rem);
-  min-height: 27rem;
-  margin: 0 1rem 1rem;
+  width: min(100%, 62rem);
+  height: 100%;
+  min-height: 0;
+  margin: 0 auto;
   overflow: hidden;
   background: var(--app-frame);
   border: 1px solid var(--app-line-strong);
@@ -341,25 +390,26 @@ ion-text[color='danger'] .notice {
   display: grid;
   max-width: 22rem;
   justify-items: center;
-  padding: 2rem;
+  padding: clamp(0.75rem, 3vh, 2rem);
   color: var(--app-ink);
   text-align: center;
 }
 
 .empty-state ion-icon {
-  width: 3rem;
-  height: 3rem;
+  width: clamp(2rem, 7vh, 3rem);
+  height: clamp(2rem, 7vh, 3rem);
   color: var(--app-accent);
 }
 
 .empty-state h2 {
-  margin: 1rem 0 0.35rem;
-  font-size: 1.2rem;
+  margin: clamp(0.55rem, 1.8vh, 1rem) 0 0.25rem;
+  font-size: clamp(1rem, 2.2vh, 1.2rem);
 }
 
 .empty-state p {
   margin: 0;
   color: var(--app-muted);
+  font-size: clamp(0.72rem, 1.8vh, 1rem);
   line-height: 1.45;
 }
 
@@ -370,17 +420,15 @@ ion-text[color='danger'] .notice {
 
   .control-panel {
     max-width: 62rem;
-    margin: 0 auto;
-    padding: 1.5rem 1.4rem 1rem;
   }
 
   .brand-row {
-    grid-template-columns: 4rem minmax(0, 1fr);
+    grid-template-columns: clamp(2.8rem, 7vh, 4rem) minmax(0, 1fr);
   }
 
   .brand-mark {
-    width: 4rem;
-    height: 4rem;
+    width: clamp(2.8rem, 7vh, 4rem);
+    height: clamp(2.8rem, 7vh, 4rem);
   }
 
   h1 {
@@ -391,24 +439,14 @@ ion-text[color='danger'] .notice {
     grid-template-columns: 10.5rem 8rem 7rem;
   }
 
-  .primary-action {
-    grid-column: auto;
-  }
-
   .test-shell {
     max-width: 62rem;
-    height: calc(100dvh - 17rem);
-    margin-inline: auto;
   }
 }
 
 @media (max-width: 430px) {
   ion-title {
     font-size: 0.9rem;
-  }
-
-  .control-panel {
-    gap: 0.9rem;
   }
 
   .brand-row {
@@ -421,11 +459,78 @@ ion-text[color='danger'] .notice {
   }
 
   h1 {
-    font-size: 2rem;
+    font-size: clamp(1.15rem, 5.8vw, 1.8rem);
   }
 
-  .test-shell {
-    height: calc(100dvh - 25rem);
-    min-height: 22rem;
+  .actions {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 2.45rem;
+  }
+
+  .actions ion-button[fill='clear'] {
+    --padding-end: 0;
+    --padding-start: 0;
+  }
+
+  .stop-label {
+    display: none;
+  }
+}
+
+@media (max-width: 360px), (max-height: 640px) {
+  ion-title {
+    font-size: 0.82rem;
+  }
+
+  ion-header ion-button {
+    width: 2.25rem;
+    min-height: 2.35rem;
+  }
+
+  .brand-row {
+    grid-template-columns: 2.25rem minmax(0, 1fr);
+  }
+
+  .brand-mark {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .brand-mark ion-icon {
+    width: 1.2rem;
+    height: 1.2rem;
+  }
+
+  .eyebrow {
+    font-size: 0.58rem;
+  }
+
+  h1 {
+    font-size: clamp(1.1rem, 6vw, 1.5rem);
+  }
+
+  .server-field {
+    --min-height: 2.7rem;
+  }
+
+  ion-button {
+    min-height: 2.15rem;
+    font-size: 0.72rem;
+  }
+
+  .actions {
+    grid-template-columns: minmax(0, 1fr) 2.35rem 2.35rem;
+  }
+
+  .actions ion-button[fill='outline'] {
+    --padding-end: 0;
+    --padding-start: 0;
+  }
+
+  .save-label {
+    display: none;
+  }
+
+  .empty-state p {
+    max-width: 18rem;
   }
 }
