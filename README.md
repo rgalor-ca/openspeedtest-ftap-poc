@@ -169,6 +169,16 @@ For Android emulator testing, use:
 http://10.0.2.2:3000
 ```
 
+## GitHub Pages
+
+The online web version is deployed through GitHub Pages:
+
+```text
+https://rgalor-ca.github.io/openspeedtest-ftap-poc/
+```
+
+Because GitHub Pages is served over HTTPS, remote users need to enter a publicly reachable HTTPS OpenSpeedTest server URL. Local-only addresses such as `127.0.0.1`, `192.168.x.x`, and `10.0.2.2` are only valid for local development or the Android emulator.
+
 ## Build The Web App
 
 ```bash

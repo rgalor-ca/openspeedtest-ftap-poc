@@ -30,6 +30,7 @@ import {
 const SERVER_STORAGE_KEY = 'openspeedtest-server-url';
 const LOCAL_NETWORK_SERVER_URL = 'http://192.168.0.13:3000';
 const ANDROID_EMULATOR_SERVER_URL = 'http://10.0.2.2:3000';
+const GITHUB_PAGES_HOST = 'rgalor-ca.github.io';
 const MIN_STARTING_STATUS_MS = 5000;
 
 @Component({
@@ -270,6 +271,10 @@ function getInitialServerUrl(): string {
 
   if (Capacitor.getPlatform() === 'android' && (!savedUrl || savedUrl === LOCAL_NETWORK_SERVER_URL)) {
     return ANDROID_EMULATOR_SERVER_URL;
+  }
+
+  if (!savedUrl && location.hostname === GITHUB_PAGES_HOST) {
+    return '';
   }
 
   return savedUrl ?? LOCAL_NETWORK_SERVER_URL;

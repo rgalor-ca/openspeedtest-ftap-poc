@@ -167,6 +167,7 @@ sequenceDiagram
 | Browser on another device in same LAN | `http://<computer-lan-ip>:3000` |
 | Android emulator on same Windows host | `http://10.0.2.2:3000` |
 | Physical Android phone on same Wi-Fi | `http://<computer-lan-ip>:3000` |
+| GitHub Pages remote access | Public HTTPS OpenSpeedTest server URL |
 
 Important behavior:
 
@@ -174,6 +175,43 @@ Important behavior:
 - `127.0.0.1` inside the Android emulator means the emulator itself.
 - Android emulator uses `10.0.2.2` as an alias to the host machine.
 - Physical devices usually need the LAN IP of the computer running Docker.
+- GitHub Pages is served over HTTPS, so remote users need an HTTPS OpenSpeedTest server. A private LAN or HTTP-only server will not work reliably from the hosted page.
+
+## GitHub Pages Deployment
+
+The repository includes a GitHub Actions workflow at `.github/workflows/pages.yml`.
+
+Deployment flow:
+
+```mermaid
+flowchart LR
+  Push["Push to main"]
+  Actions["GitHub Actions"]
+  Install["npm ci"]
+  Build["npm run build:pages"]
+  Artifact["Upload Pages artifact"]
+  Pages["Deploy GitHub Pages"]
+  Site["https://rgalor-ca.github.io/openspeedtest-ftap-poc/"]
+
+  Push --> Actions
+  Actions --> Install
+  Install --> Build
+  Build --> Artifact
+  Artifact --> Pages
+  Pages --> Site
+```
+
+The Pages build uses:
+
+```bash
+npm run build:pages
+```
+
+This builds Angular with the required repository base path:
+
+```text
+/openspeedtest-ftap-poc/
+```
 
 ## 8. Android WebView HTTP Handling
 
