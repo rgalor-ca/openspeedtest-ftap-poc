@@ -20,6 +20,7 @@ The app provides:
 - A Docker-based OpenSpeedTest server workflow.
 - A hosted GitHub Pages shell for remote access.
 - Server URL management.
+- Local results history stored on the device/browser.
 - Immediate and visible status feedback.
 - Dark mode by default with a light/dark toggle.
 - One-screen responsive UI with no app-level scrolling across validated viewports.
@@ -36,6 +37,12 @@ This is not an Ookla product. The correct product name in this repository is `FT
 
 ![FTAP OpenSpeedTest POC local browser screenshot](images/local-browser-ftap-poc.png)
 
+### Desktop Results And Settings Modals
+
+| Results History | Settings |
+| --- | --- |
+| ![FTAP OpenSpeedTest POC desktop results modal](images/desktop-results-modal.png) | ![FTAP OpenSpeedTest POC desktop settings modal](images/desktop-settings-modal.png) |
+
 ### Android Emulator Idle Screenshot
 
 ![FTAP OpenSpeedTest POC Android emulator screenshot](images/android-emulator-loaded.png)
@@ -43,6 +50,12 @@ This is not an Ookla product. The correct product name in this repository is `FT
 ### Android Emulator Result Screenshot
 
 ![FTAP OpenSpeedTest POC Android emulator result screenshot](images/android-emulator-result.png)
+
+### Android Emulator Modal Screenshots
+
+| Results modal | Settings modal |
+| --- | --- |
+| ![FTAP OpenSpeedTest POC Android results modal](images/android-emulator-results-modal.png) | ![FTAP OpenSpeedTest POC Android settings modal](images/android-emulator-settings-modal.png) |
 
 ### Responsive Validation Screenshots
 
@@ -118,7 +131,7 @@ flowchart LR
 | File | Responsibility |
 | --- | --- |
 | `src/app/app.ts` | Holds app state, URL validation, saved server URL, theme mode, start/stop/reload behavior, ping/download/upload measurement, and error handling |
-| `src/app/app.html` | Defines the Ionic UI, toolbar, settings panel, metrics row, GO ring, gauge, server strip, status text, and results panel |
+| `src/app/app.html` | Defines the Ionic UI, toolbar, settings modal, results modal, metrics row, GO ring, gauge, server strip, status text, and results panel |
 | `src/app/app.scss` | Provides dark/light themes, Speedtest-style visual treatment, one-screen responsive layout, gauge styling, and overflow control |
 | `src/styles.scss` | Imports Ionic CSS and defines baseline root styling |
 | `capacitor.config.ts` | Defines Capacitor app id/name, web output path, and local HTTP WebView settings |
@@ -147,6 +160,7 @@ sequenceDiagram
   A->>S: Stream /downloading for download Mbps
   A->>S: POST binary payloads to /upload for upload Mbps
   A->>A: Store metrics in signals
+  A->>Store: Save completed result locally
   A-->>U: Show completed result panel
 ```
 
@@ -305,7 +319,7 @@ Invoke-WebRequest -UseBasicParsing -Method Post -Uri http://127.0.0.1:3000/uploa
 
 ```mermaid
 flowchart LR
-  Commit["Commit to main"]
+  Commit["Commit to main or master"]
   Push["Push to GitHub"]
   Workflow["Deploy GitHub Pages workflow"]
   Checkout["Checkout"]
@@ -321,7 +335,7 @@ flowchart LR
 
 Why `build:pages` exists:
 
-GitHub Pages hosts the app under the repository path:
+The workflow is configured for pushes to `main` and `master`. GitHub Pages hosts the app under the repository path:
 
 ```text
 /openspeedtest-ftap-poc/
@@ -480,6 +494,8 @@ flowchart TD
 | Server download | `/downloading` endpoint | Server returns HTTP 200 | `Invoke-WebRequest` |
 | Server upload | `/upload` endpoint | Server accepts POST | `Invoke-WebRequest` |
 | Local browser | Full speed test | GO completes and shows download/upload/ping/jitter | Browser automation |
+| Results modal | Open saved results | Results history opens in a modal without sign-in or account copy | Browser automation |
+| Settings modal | Open settings | Settings opens in a modal with global settings and current connection | Browser automation |
 | Stop flow | Stop during active test | App returns to stopped state with clean message | Browser automation |
 | Invalid URL | Bad server URL | App rejects URL before network call | Browser automation |
 | HTTPS mixed content | Web or GitHub Pages with HTTP URL | App blocks and asks for HTTPS | Code path and validation |
@@ -504,6 +520,9 @@ Validation date: May 6, 2026
 | OpenSpeedTest download endpoint | Passed | `http://127.0.0.1:3000/downloading?probe=1` returned HTTP 200 |
 | OpenSpeedTest upload endpoint | Passed | `http://127.0.0.1:3000/upload?probe=1` accepted POST and returned HTTP 200 |
 | Local browser full run | Passed | Local run completed with download, upload, ping, jitter, and result ID |
+| Results modal | Passed | Completed results are saved locally and displayed in a modal; no sign-in or account prompt appears |
+| Settings modal | Passed | Settings opens as a modal with Global Settings and Current Connection sections |
+| Recommendation survey removal | Passed | The completed screen no longer contains the recommendation question or score row |
 | Stop/abort flow | Passed | Stop now displays `Speed test stopped.` instead of a low-level abort error |
 | Completion state | Passed | Stop button is hidden after completion |
 | Invalid URL flow | Passed | `not-a-url` is rejected before any speed-test request starts |
@@ -627,7 +646,7 @@ For production:
 ## 22. Known POC Limitations
 
 - Browser-based speed tests are approximate and depend on browser fetch behavior, device load, Docker host load, and network conditions.
-- The app currently stores only the latest in-memory result and does not keep history.
+- Results history is local to the current browser/device and is capped at 20 saved entries.
 - The result ID is a local POC identifier, not a signed public result certificate.
 - The APK is a debug artifact.
 - Public remote testing requires a public HTTPS OpenSpeedTest-compatible server.
@@ -640,7 +659,7 @@ Recommended next steps if this moves beyond POC:
 1. Host OpenSpeedTest behind a real domain with HTTPS.
 2. Restrict Capacitor navigation to that domain.
 3. Add release signing for Android.
-4. Add a results history screen.
+4. Add export/share options for local results history.
 5. Add E2E tests for URL validation, start, stop, completion, and theme persistence.
 6. Add CI jobs for Android APK build artifacts.
 7. Add environment-based defaults for local, staging, and production server URLs.

@@ -33,6 +33,7 @@ import {
 
 const SERVER_STORAGE_KEY = 'openspeedtest-server-url';
 const THEME_STORAGE_KEY = 'ftap-theme-mode';
+const RESULTS_STORAGE_KEY = 'ftap-speed-results';
 const LOCAL_NETWORK_SERVER_URL = 'http://192.168.0.13:3000';
 const ANDROID_EMULATOR_SERVER_URL = 'http://10.0.2.2:3000';
 const GITHUB_PAGES_HOST = 'rgalor-ca.github.io';
@@ -42,6 +43,18 @@ const UPLOAD_CHUNK_BYTES = 2 * 1024 * 1024;
 
 type ThemeMode = 'dark' | 'light';
 type TestPhase = 'idle' | 'ping' | 'download' | 'upload' | 'complete' | 'error' | 'stopped';
+type HistoryMetric = 'download' | 'upload';
+
+interface SpeedResult {
+  id: string;
+  createdAt: string;
+  downloadMbps: number;
+  uploadMbps: number;
+  pingMs: number;
+  jitterMs: number;
+  serverHost: string;
+  serverUrl: string;
+}
 
 @Component({
   selector: 'app-root',
@@ -67,8 +80,11 @@ export class App {
   readonly notice = signal('Ready to run a basic OpenSpeedTest-powered check.');
   readonly noticeTone = signal<'medium' | 'success' | 'danger'>('medium');
   readonly testPhase = signal<TestPhase>('idle');
+  readonly historyMetric = signal<HistoryMetric>('download');
   readonly themeMode = signal<ThemeMode>(getInitialThemeMode());
-  readonly showServerEditor = signal(false);
+  readonly showSettingsModal = signal(false);
+  readonly showResultsModal = signal(false);
+  readonly results = signal<SpeedResult[]>(getStoredResults());
   readonly downloadMbps = signal<number | null>(null);
   readonly uploadMbps = signal<number | null>(null);
   readonly pingMs = signal<number | null>(null);
@@ -76,7 +92,6 @@ export class App {
   readonly currentMbps = signal<number | null>(null);
   readonly phaseProgress = signal(0);
   readonly resultId = signal(generateResultId());
-  readonly recommendationScores = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
   readonly isRunning = computed(() =>
     ['ping', 'download', 'upload'].includes(this.testPhase()),
@@ -127,6 +142,18 @@ export class App {
   readonly progressWidth = computed(() => `${Math.round(this.phaseProgress() * 100)}%`);
   readonly accentColor = computed(() => (this.testPhase() === 'upload' ? '#bf69ff' : '#22e6e1'));
   readonly buttonLabel = computed(() => (this.isRunning() ? 'STOP' : 'GO'));
+  readonly latestResult = computed(() => this.results()[0] ?? null);
+  readonly historyRows = computed(() => this.results().slice(0, 4));
+  readonly chartResults = computed(() => this.results().slice(0, 6).reverse());
+  readonly historyPeak = computed(() => {
+    const values = this.chartResults().map((result) =>
+      this.historyMetric() === 'upload' ? result.uploadMbps : result.downloadMbps,
+    );
+
+    return Math.max(100, ...values);
+  });
+  readonly historyPeakLabel = computed(() => Math.round(this.historyPeak()).toString());
+  readonly historyMidLabel = computed(() => Math.round(this.historyPeak() / 2).toString());
 
   private abortController: AbortController | null = null;
   private stopRequested = false;
@@ -170,6 +197,7 @@ export class App {
   }
 
   async startTest(): Promise<void> {
+    this.closeModals();
     const normalizedUrl = this.normalizeServerUrl();
 
     if (!normalizedUrl) {
@@ -210,10 +238,12 @@ export class App {
       const upload = await this.measureUpload(normalizedUrl, this.abortController.signal);
       this.uploadMbps.set(upload);
 
+      const completedResult = this.createCompletedResult(normalizedUrl, download, upload, latency);
       this.testPhase.set('complete');
       this.phaseProgress.set(1);
       this.currentMbps.set(null);
-      this.resultId.set(generateResultId());
+      this.resultId.set(completedResult.id);
+      this.saveResult(completedResult);
       this.noticeTone.set('success');
       this.notice.set('FTAP OpenSpeedTest POC completed.');
     } catch (error) {
@@ -266,13 +296,28 @@ export class App {
 
     localStorage.setItem(SERVER_STORAGE_KEY, normalizedUrl);
     this.serverUrl.set(normalizedUrl);
-    this.showServerEditor.set(false);
+    this.showSettingsModal.set(false);
     this.noticeTone.set('success');
     this.notice.set('Server URL saved on this device.');
   }
 
-  toggleServerEditor(): void {
-    this.showServerEditor.update((value) => !value);
+  openSettings(): void {
+    this.showResultsModal.set(false);
+    this.showSettingsModal.set(true);
+  }
+
+  openResults(): void {
+    this.showSettingsModal.set(false);
+    this.showResultsModal.set(true);
+  }
+
+  closeModals(): void {
+    this.showSettingsModal.set(false);
+    this.showResultsModal.set(false);
+  }
+
+  setHistoryMetric(metric: HistoryMetric): void {
+    this.historyMetric.set(metric);
   }
 
   toggleTheme(): void {
@@ -297,6 +342,42 @@ export class App {
 
   formatLatency(value: number | null): string {
     return value === null ? '-' : Math.round(value).toString();
+  }
+
+  formatResultDate(value: string): string {
+    return new Intl.DateTimeFormat('en-US', {
+      month: '2-digit',
+      day: '2-digit',
+      year: 'numeric',
+    }).format(new Date(value));
+  }
+
+  formatResultTime(value: string): string {
+    return new Intl.DateTimeFormat('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(new Date(value));
+  }
+
+  formatResultTooltip(result: SpeedResult): string {
+    const metric = this.historyMetric();
+    const speed = metric === 'upload' ? result.uploadMbps : result.downloadMbps;
+    return `${this.formatResultDate(result.createdAt)} ${this.formatSpeed(speed)} Mbps`;
+  }
+
+  historyPointLeft(index: number): number {
+    const points = this.chartResults().length;
+
+    if (points <= 1) {
+      return 4;
+    }
+
+    return 4 + (index / (points - 1)) * 92;
+  }
+
+  historyPointBottom(result: SpeedResult): number {
+    const speed = this.historyMetric() === 'upload' ? result.uploadMbps : result.downloadMbps;
+    return Math.max(8, Math.min(92, (speed / this.historyPeak()) * 84));
   }
 
   private async measurePing(baseUrl: string, signal: AbortSignal): Promise<{ ping: number; jitter: number }> {
@@ -459,6 +540,30 @@ export class App {
     const normalized = Math.min(Math.log10(value + 1) / Math.log10(1001), 1);
     return normalized * 270;
   }
+
+  private createCompletedResult(
+    normalizedUrl: string,
+    download: number,
+    upload: number,
+    latency: { ping: number; jitter: number },
+  ): SpeedResult {
+    return {
+      id: generateResultId(),
+      createdAt: new Date().toISOString(),
+      downloadMbps: download,
+      uploadMbps: upload,
+      pingMs: latency.ping,
+      jitterMs: latency.jitter,
+      serverHost: this.serverHost(),
+      serverUrl: normalizedUrl,
+    };
+  }
+
+  private saveResult(result: SpeedResult): void {
+    const nextResults = [result, ...this.results()].slice(0, 20);
+    this.results.set(nextResults);
+    localStorage.setItem(RESULTS_STORAGE_KEY, JSON.stringify(nextResults));
+  }
 }
 
 function getInitialServerUrl(): string {
@@ -477,6 +582,47 @@ function getInitialServerUrl(): string {
 
 function getInitialThemeMode(): ThemeMode {
   return localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark';
+}
+
+function getStoredResults(): SpeedResult[] {
+  try {
+    const rawResults = localStorage.getItem(RESULTS_STORAGE_KEY);
+
+    if (!rawResults) {
+      return [];
+    }
+
+    const parsedResults = JSON.parse(rawResults);
+
+    if (!Array.isArray(parsedResults)) {
+      return [];
+    }
+
+    return parsedResults
+      .filter(isSpeedResult)
+      .sort((left, right) => Date.parse(right.createdAt) - Date.parse(left.createdAt))
+      .slice(0, 20);
+  } catch {
+    return [];
+  }
+}
+
+function isSpeedResult(value: unknown): value is SpeedResult {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const result = value as SpeedResult;
+  return (
+    typeof result.id === 'string' &&
+    typeof result.createdAt === 'string' &&
+    typeof result.downloadMbps === 'number' &&
+    typeof result.uploadMbps === 'number' &&
+    typeof result.pingMs === 'number' &&
+    typeof result.jitterMs === 'number' &&
+    typeof result.serverHost === 'string' &&
+    typeof result.serverUrl === 'string'
+  );
 }
 
 function isBlockedMixedContent(serverUrl: string): boolean {

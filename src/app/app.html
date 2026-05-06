@@ -4,11 +4,25 @@
       <div class="topbar">
         <ion-title>FTAP OpenSpeedTest POC</ion-title>
         <ion-buttons>
-          <ion-button fill="clear" class="nav-button">
+          <ion-button
+            fill="clear"
+            class="nav-button"
+            [class.is-active]="showResultsModal()"
+            aria-label="Open results"
+            title="Results"
+            (click)="openResults()"
+          >
             <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>
             Results
           </ion-button>
-          <ion-button fill="clear" class="nav-button" (click)="toggleServerEditor()">
+          <ion-button
+            fill="clear"
+            class="nav-button"
+            [class.is-active]="showSettingsModal()"
+            aria-label="Open settings"
+            title="Settings"
+            (click)="openSettings()"
+          >
             <ion-icon slot="start" name="settings-outline"></ion-icon>
             Settings
           </ion-button>
@@ -31,32 +45,6 @@
 
   <ion-content [scrollY]="false" class="speed-shell">
     <main class="speed-dashboard" [class.is-running]="isRunning()" [class.has-results]="testPhase() === 'complete'">
-      @if (showServerEditor()) {
-        <section class="settings-panel">
-          <ion-item class="server-field" lines="none">
-            <ion-icon slot="start" name="link-outline"></ion-icon>
-            <ion-input
-              label="OpenSpeedTest Server URL"
-              label-placement="stacked"
-              placeholder="http://10.0.2.2:3000"
-              [value]="serverUrl()"
-              (ionInput)="onServerUrlInput($event)"
-              clear-input="true"
-            ></ion-input>
-          </ion-item>
-          <div class="settings-actions">
-            <ion-button fill="outline" (click)="saveServer()">
-              <ion-icon slot="start" name="save-outline"></ion-icon>
-              Save
-            </ion-button>
-            <ion-button fill="clear" (click)="toggleServerEditor()">
-              <ion-icon slot="start" name="close-outline"></ion-icon>
-              Close
-            </ion-button>
-          </div>
-        </section>
-      }
-
       <section class="metrics-grid" aria-label="Speed test metrics">
         <div class="metric-card metric-download">
           <p>
@@ -139,7 +127,7 @@
         <div class="server-side server-target">
           <strong>OpenSpeedTest</strong>
           <span>{{ serverHost() }}</span>
-          <button type="button" (click)="toggleServerEditor()">Change Server</button>
+          <button type="button" (click)="openSettings()">Change Server</button>
         </div>
       </section>
 
@@ -157,26 +145,186 @@
 
       @if (testPhase() === 'complete') {
         <section class="result-panel">
-          <div class="share-row">
-            <span>Share</span>
-            <span class="share-dot"></span>
-            <span class="share-dot"></span>
-            <span class="share-dot"></span>
-            <small>Result ID {{ resultId() }}</small>
+          <div>
+            <span>Result ID {{ resultId() }}</span>
+            <strong>Saved to Results History</strong>
           </div>
-          <div class="recommendation">
-            <strong>How likely is it that you would recommend this FTAP speed test?</strong>
-            <div class="score-row">
-              @for (score of recommendationScores; track score) {
-                <button type="button">{{ score }}</button>
-              }
-            </div>
-            <p><span>Not at all likely</span><span>Extremely likely</span></p>
-          </div>
+          <button type="button" (click)="openResults()">View Results</button>
         </section>
       }
 
       <div class="phase-line" aria-hidden="true"></div>
     </main>
+
+    @if (showResultsModal()) {
+      <section class="modal-backdrop" (click)="closeModals()">
+        <article class="app-modal results-modal" (click)="$event.stopPropagation()">
+          <header class="modal-header">
+            <div>
+              <p>Results</p>
+              <h2>Results History</h2>
+            </div>
+            <button type="button" class="modal-close" aria-label="Close results" (click)="closeModals()">
+              <ion-icon name="close-outline"></ion-icon>
+            </button>
+          </header>
+
+          @if (results().length === 0) {
+            <section class="history-empty">
+              <strong>No results yet</strong>
+              <span>Run a speed test and the completed result will appear here.</span>
+              <button type="button" (click)="closeModals()">Run test</button>
+            </section>
+          } @else {
+            <section class="history-panel">
+              <div class="history-toolbar">
+                <div class="metric-tabs">
+                  <button
+                    type="button"
+                    [class.is-selected]="historyMetric() === 'download'"
+                    (click)="setHistoryMetric('download')"
+                  >
+                    <ion-icon name="arrow-down-circle-outline"></ion-icon>
+                    Download
+                  </button>
+                  <button
+                    type="button"
+                    [class.is-selected]="historyMetric() === 'upload'"
+                    (click)="setHistoryMetric('upload')"
+                  >
+                    <ion-icon name="arrow-up-circle-outline"></ion-icon>
+                    Upload
+                  </button>
+                </div>
+                <strong>All Results</strong>
+              </div>
+
+              <div class="history-chart" aria-label="Results history chart">
+                <span class="axis-label axis-top">{{ historyPeakLabel() }}</span>
+                <span class="axis-label axis-mid">{{ historyMidLabel() }}</span>
+                <span class="axis-label axis-unit">Mbps</span>
+                @for (result of chartResults(); track result.id; let index = $index) {
+                  <button
+                    type="button"
+                    class="history-dot"
+                    [style.left.%]="historyPointLeft(index)"
+                    [style.bottom.%]="historyPointBottom(result)"
+                    [title]="formatResultTooltip(result)"
+                  >
+                    <span>{{ formatSpeed(historyMetric() === 'upload' ? result.uploadMbps : result.downloadMbps) }} Mbps</span>
+                  </button>
+                }
+              </div>
+
+              <section class="history-table" aria-label="Saved speed test results">
+                <div class="history-table-head">
+                  <span>Date/Time</span>
+                  <span>Ping <small>ms</small></span>
+                  <span>Download <small>Mbps</small></span>
+                  <span>Upload <small>Mbps</small></span>
+                  <span>Server</span>
+                </div>
+                <div class="history-table-body">
+                  @for (result of historyRows(); track result.id) {
+                    <article class="history-row">
+                      <div>
+                        <strong>{{ formatResultDate(result.createdAt) }}</strong>
+                        <small>{{ formatResultTime(result.createdAt) }}</small>
+                      </div>
+                      <span>{{ formatLatency(result.pingMs) }}</span>
+                      <span>{{ formatSpeed(result.downloadMbps) }}</span>
+                      <span>{{ formatSpeed(result.uploadMbps) }}</span>
+                      <div>
+                        <strong>{{ result.serverHost }}</strong>
+                        <small>OpenSpeedTest</small>
+                      </div>
+                    </article>
+                  }
+                </div>
+                <p class="history-count">Showing {{ historyRows().length }} of {{ results().length }}</p>
+              </section>
+            </section>
+          }
+        </article>
+      </section>
+    }
+
+    @if (showSettingsModal()) {
+      <section class="modal-backdrop" (click)="closeModals()">
+        <article class="app-modal settings-modal" (click)="$event.stopPropagation()">
+          <header class="modal-header">
+            <div>
+              <p>Settings</p>
+              <h2>Settings</h2>
+            </div>
+            <button type="button" class="modal-close" aria-label="Close settings" (click)="closeModals()">
+              <ion-icon name="close-outline"></ion-icon>
+            </button>
+          </header>
+
+          <section class="settings-content">
+            <div class="settings-column">
+              <h3>Global Settings</h3>
+              <dl class="settings-list">
+                <div>
+                  <dt>Time</dt>
+                  <dd><strong>12-hour</strong><span>24-hour</span></dd>
+                </div>
+                <div>
+                  <dt>Date</dt>
+                  <dd><button type="button">MM/DD/YYYY</button></dd>
+                </div>
+                <div>
+                  <dt>Distance</dt>
+                  <dd><strong>Miles</strong><span>Kilometers</span></dd>
+                </div>
+                <div>
+                  <dt>Speed</dt>
+                  <dd><strong>Mbps</strong><span>Kbps</span></dd>
+                </div>
+                <div>
+                  <dt>Server</dt>
+                  <dd><strong>OpenSpeedTest</strong></dd>
+                </div>
+              </dl>
+
+              <ion-item class="server-field settings-server-field" lines="none">
+                <ion-icon slot="start" name="link-outline"></ion-icon>
+                <ion-input
+                  label="Server URL"
+                  label-placement="stacked"
+                  placeholder="http://10.0.2.2:3000"
+                  [value]="serverUrl()"
+                  (ionInput)="onServerUrlInput($event)"
+                  clear-input="true"
+                ></ion-input>
+              </ion-item>
+
+              <div class="settings-actions">
+                <ion-button fill="outline" (click)="saveServer()">
+                  <ion-icon slot="start" name="save-outline"></ion-icon>
+                  Save
+                </ion-button>
+                <ion-button fill="clear" (click)="closeModals()">
+                  <ion-icon slot="start" name="close-outline"></ion-icon>
+                  Close
+                </ion-button>
+              </div>
+            </div>
+
+            <div class="settings-column">
+              <h3>Current Connection</h3>
+              <div class="connection-details">
+                <strong>FTAP Client</strong>
+                <span>Local test device</span>
+                <strong>OpenSpeedTest</strong>
+                <span>{{ serverHost() }}</span>
+                <span>{{ serverUrl() || 'Server URL not set' }}</span>
+              </div>
+            </div>
+          </section>
+        </article>
+      </section>
+    }
   </ion-content>
 </ion-app>

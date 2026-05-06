@@ -23,7 +23,7 @@ Important: this is not an Ookla product and should not be branded as Ookla. This
 
 - Hybrid app built with Ionic Angular and Capacitor.
 - Android debug APK artifact committed in the repository.
-- Speedtest-style dark UI with a large GO ring, animated gauge, download/upload metrics, ping/jitter row, server row, status text, result panel, and light/dark toggle.
+- Speedtest-style dark UI with a large GO ring, animated gauge, download/upload metrics, ping/jitter row, server row, status text, result panel, local results modal, settings modal, and light/dark toggle.
 - Direct OpenSpeedTest endpoint integration:
   - `GET /downloading` for download measurement.
   - `POST /upload` for upload measurement.
@@ -32,6 +32,7 @@ Important: this is not an Ookla product and should not be branded as Ookla. This
 - GitHub Pages deployment for remote UI access.
 - One-screen responsive UI validated with no app-level scrolling across tested mobile, tablet, and desktop viewports.
 - Editable and saved OpenSpeedTest server URL.
+- Local results history saved on the device/browser without sign-in.
 - Start, stop, restart/reload, invalid URL, unreachable server, HTTPS mixed-content, and completed-result states.
 - Full documentation with architecture, workflows, edge cases, validation, and troubleshooting.
 
@@ -41,6 +42,12 @@ Important: this is not an Ookla product and should not be branded as Ookla. This
 
 ![FTAP OpenSpeedTest POC local browser screenshot](docs/images/local-browser-ftap-poc.png)
 
+### Results And Settings Modals
+
+| Results History | Settings |
+| --- | --- |
+| ![FTAP OpenSpeedTest POC results modal](docs/images/desktop-results-modal.png) | ![FTAP OpenSpeedTest POC settings modal](docs/images/desktop-settings-modal.png) |
+
 ### Android Emulator Idle
 
 ![FTAP OpenSpeedTest POC Android emulator screenshot](docs/images/android-emulator-loaded.png)
@@ -48,6 +55,12 @@ Important: this is not an Ookla product and should not be branded as Ookla. This
 ### Android Emulator Result
 
 ![FTAP OpenSpeedTest POC Android emulator result screenshot](docs/images/android-emulator-result.png)
+
+### Android Emulator Modals
+
+| Results modal | Settings modal |
+| --- | --- |
+| ![FTAP OpenSpeedTest POC Android results modal](docs/images/android-emulator-results-modal.png) | ![FTAP OpenSpeedTest POC Android settings modal](docs/images/android-emulator-settings-modal.png) |
 
 ### Validated Responsive Views
 
@@ -255,11 +268,11 @@ Why: `127.0.0.1` inside the emulator points to the emulator itself. `10.0.2.2` i
 
 ## GitHub Pages Deployment
 
-GitHub Pages deploys on every push to `main` through `.github/workflows/pages.yml`.
+GitHub Pages deploys on every push to `main` or `master` through `.github/workflows/pages.yml`.
 
 ```mermaid
 flowchart LR
-  Push["Push to main"]
+  Push["Push to main or master"]
   Checkout["Checkout"]
   Node["Setup Node 24"]
   Install["npm ci"]
@@ -296,6 +309,7 @@ Current validation covers:
 - GitHub Pages build with `npm run build:pages`.
 - Docker OpenSpeedTest endpoint health for `/downloading` and `/upload`.
 - Local browser full start-to-complete flow using real OpenSpeedTest endpoints.
+- Results modal, settings modal, no sign-in prompt, and no recommendation survey.
 - Stop/abort behavior while a test is active.
 - Responsive completed-result checks at `320x568`, `390x844`, `768x1024`, and `1366x768`.
 - Capacitor sync with `npx cap sync android`.
