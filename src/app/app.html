@@ -1,0 +1,88 @@
+<ion-app>
+  <ion-header class="ion-no-border">
+    <ion-toolbar>
+      <ion-title>FTAP OpenSpeedTest POC</ion-title>
+      <ion-buttons slot="end">
+        <ion-button fill="clear" (click)="reloadTest()" [disabled]="!activeTestUrl()">
+          <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
+        </ion-button>
+      </ion-buttons>
+    </ion-toolbar>
+  </ion-header>
+
+  <ion-content [fullscreen]="true" class="app-shell">
+    <section class="control-panel">
+      <div class="brand-row">
+        <div class="brand-mark">
+          <ion-icon name="speedometer-outline"></ion-icon>
+        </div>
+        <div>
+          <p class="eyebrow">Hybrid mobile speed test</p>
+          <h1>FTAP OpenSpeedTest POC</h1>
+        </div>
+      </div>
+
+      <ion-item class="server-field" lines="none">
+        <ion-icon slot="start" name="server-outline"></ion-icon>
+        <ion-input
+          label="Server URL"
+          label-placement="stacked"
+          placeholder="http://192.168.1.10:3000"
+          [value]="serverUrl()"
+          (ionInput)="onServerUrlInput($event)"
+          clear-input="true"
+        ></ion-input>
+      </ion-item>
+
+      <div class="actions">
+        <ion-button class="primary-action" (click)="startTest()">
+          <ion-icon slot="start" name="play-outline"></ion-icon>
+          {{ startButtonLabel() }}
+        </ion-button>
+        <ion-button fill="outline" (click)="saveServer()">
+          <ion-icon slot="start" name="save-outline"></ion-icon>
+          Save
+        </ion-button>
+        <ion-button fill="clear" color="medium" (click)="stopTest()" [disabled]="!activeTestUrl()">
+          <ion-icon slot="start" name="stop-circle-outline"></ion-icon>
+          Stop
+        </ion-button>
+      </div>
+
+      @if (notice()) {
+        <ion-text [color]="noticeTone()">
+          <p class="notice">{{ notice() }}</p>
+        </ion-text>
+      }
+
+      <div class="status-row" [class.is-active]="testStatus() !== 'idle'">
+        <span class="status-dot"></span>
+        <span>{{ testStatusLabel() }}</span>
+      </div>
+    </section>
+
+    <section class="test-shell" [class.is-empty]="!trustedTestUrl() && !isTestLoading()">
+      @if (isTestLoading()) {
+        <div class="frame-overlay">
+          <ion-spinner name="crescent"></ion-spinner>
+          <p>{{ testStatusLabel() }}</p>
+        </div>
+      }
+      @if (trustedTestUrl()) {
+        <iframe
+          title="FTAP OpenSpeedTest POC"
+          [src]="trustedTestUrl()"
+          (load)="onTestFrameLoad()"
+          allow="fullscreen"
+          referrerpolicy="no-referrer"
+        ></iframe>
+      } @else if (!isTestLoading()) {
+        <div class="empty-state">
+          <ion-icon name="cellular-outline"></ion-icon>
+          <h2>No active test</h2>
+          <p>Awaiting FTAP OpenSpeedTest POC server connection.</p>
+        </div>
+      }
+    </section>
+  </ion-content>
+</ion-app>

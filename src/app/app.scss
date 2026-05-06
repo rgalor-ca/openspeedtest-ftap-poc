@@ -1,0 +1,254 @@
+:host {
+  --app-ink: #171717;
+  --app-muted: #6b7280;
+  --app-line: #d9e2df;
+  --app-panel: rgba(255, 255, 255, 0.9);
+  --app-accent: #067a75;
+  --app-warm: #f3b23c;
+  color: var(--app-ink);
+}
+
+ion-toolbar {
+  --background: rgba(252, 253, 251, 0.94);
+  --border-color: transparent;
+  --color: var(--app-ink);
+  backdrop-filter: blur(16px);
+}
+
+ion-title {
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.app-shell {
+  --background:
+    linear-gradient(135deg, rgba(6, 122, 117, 0.12), transparent 34%),
+    linear-gradient(315deg, rgba(243, 178, 60, 0.14), transparent 28%),
+    #fcfdfb;
+}
+
+.control-panel {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.brand-row {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.9rem;
+}
+
+.brand-mark {
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
+  place-items: center;
+  color: #053f3c;
+  background: linear-gradient(135deg, #d6f4ef, #ffe1a5);
+  border: 1px solid rgba(6, 122, 117, 0.18);
+  border-radius: 0.5rem;
+}
+
+.brand-mark ion-icon {
+  width: 1.8rem;
+  height: 1.8rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.25rem;
+  color: var(--app-accent);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+h1,
+h2,
+p {
+  letter-spacing: 0;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(1.45rem, 7vw, 2.3rem);
+  line-height: 1.05;
+  font-weight: 820;
+}
+
+.server-field {
+  --background: var(--app-panel);
+  --border-radius: 0.5rem;
+  --inner-padding-end: 0.75rem;
+  --padding-start: 0.75rem;
+  border: 1px solid var(--app-line);
+  border-radius: 0.5rem;
+  box-shadow: 0 16px 36px rgba(23, 23, 23, 0.06);
+}
+
+.server-field ion-icon {
+  color: var(--app-accent);
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 0.72fr 0.68fr;
+  gap: 0.65rem;
+}
+
+ion-button {
+  min-height: 2.75rem;
+  font-weight: 750;
+  letter-spacing: 0;
+  text-transform: none;
+  --border-radius: 0.5rem;
+}
+
+.primary-action {
+  --background: var(--app-accent);
+  --background-hover: #05645f;
+  --background-activated: #044d49;
+}
+
+.notice {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.status-row {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2rem;
+  padding: 0.35rem 0.65rem;
+  color: var(--app-muted);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid var(--app-line);
+  border-radius: 0.5rem;
+  font-size: 0.84rem;
+  font-weight: 750;
+}
+
+.status-row.is-active {
+  color: #053f3c;
+  border-color: rgba(6, 122, 117, 0.24);
+}
+
+.status-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  background: var(--app-muted);
+  border-radius: 999px;
+}
+
+.status-row.is-active .status-dot {
+  background: var(--app-accent);
+  box-shadow: 0 0 0 0.25rem rgba(6, 122, 117, 0.12);
+}
+
+.test-shell {
+  position: relative;
+  height: calc(100dvh - 17.25rem);
+  min-height: 27rem;
+  margin: 0 1rem 1rem;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid var(--app-line);
+  border-radius: 0.5rem;
+  box-shadow: 0 18px 48px rgba(23, 23, 23, 0.08);
+}
+
+.test-shell iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.frame-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 0.75rem;
+  color: #053f3c;
+  background: rgba(255, 255, 255, 0.88);
+  text-align: center;
+}
+
+.frame-overlay ion-spinner {
+  width: 2.4rem;
+  height: 2.4rem;
+  color: var(--app-accent);
+}
+
+.frame-overlay p {
+  margin: 0;
+  font-weight: 750;
+}
+
+.test-shell.is-empty {
+  display: grid;
+  place-items: center;
+}
+
+.empty-state {
+  display: grid;
+  max-width: 22rem;
+  justify-items: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.empty-state ion-icon {
+  width: 3rem;
+  height: 3rem;
+  color: var(--app-accent);
+}
+
+.empty-state h2 {
+  margin: 1rem 0 0.35rem;
+  font-size: 1.2rem;
+}
+
+.empty-state p {
+  margin: 0;
+  color: var(--app-muted);
+  line-height: 1.45;
+}
+
+@media (min-width: 720px) {
+  .control-panel {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: 1.4rem 1.4rem 1rem;
+  }
+
+  .actions {
+    grid-template-columns: 10rem 8rem 7rem;
+  }
+
+  .test-shell {
+    max-width: 60rem;
+    height: calc(100dvh - 16rem);
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 390px) {
+  .actions {
+    grid-template-columns: 1fr;
+  }
+
+  .test-shell {
+    height: calc(100dvh - 23rem);
+    min-height: 22rem;
+  }
+}
