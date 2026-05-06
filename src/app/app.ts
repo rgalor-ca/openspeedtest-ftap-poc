@@ -17,7 +17,9 @@ import {
 import { addIcons } from 'ionicons';
 import {
   arrowDownCircleOutline,
+  arrowDownOutline,
   arrowUpCircleOutline,
+  arrowUpOutline,
   checkmarkCircleOutline,
   closeOutline,
   flashOutline,
@@ -32,7 +34,7 @@ import {
 } from 'ionicons/icons';
 
 const SERVER_STORAGE_KEY = 'openspeedtest-server-url';
-const THEME_STORAGE_KEY = 'ftap-theme-mode';
+const THEME_STORAGE_KEY = 'ftap-ost-theme-mode';
 const RESULTS_STORAGE_KEY = 'ftap-speed-results';
 const LOCAL_NETWORK_SERVER_URL = 'http://192.168.0.13:3000';
 const ANDROID_EMULATOR_SERVER_URL = 'http://10.0.2.2:3000';
@@ -100,6 +102,8 @@ export class App {
   readonly pingMs = signal<number | null>(null);
   readonly jitterMs = signal<number | null>(null);
   readonly currentMbps = signal<number | null>(null);
+  readonly downloadSamples = signal<number[]>([]);
+  readonly uploadSamples = signal<number[]>([]);
   readonly phaseProgress = signal(0);
   readonly resultId = signal(generateResultId());
 
@@ -157,8 +161,15 @@ export class App {
   readonly gaugeProgress = computed(() => `${Math.min(this.speedToGauge(this.primaryMetric()), 270)}deg`);
   readonly needleAngle = computed(() => `${-135 + Math.min(this.speedToGauge(this.primaryMetric()), 270)}deg`);
   readonly progressWidth = computed(() => `${Math.round(this.phaseProgress() * 100)}%`);
-  readonly accentColor = computed(() => (this.isUploadPhase() ? '#bf69ff' : '#22e6e1'));
+  readonly accentColor = computed(() => '#27aeee');
   readonly activeMetricLabel = computed(() => (this.isUploadPhase() ? 'Upload' : 'Download'));
+  readonly activeGaugeIcon = computed(() => (this.isUploadPhase() ? 'arrow-up-outline' : 'arrow-down-outline'));
+  readonly displayDownloadMbps = computed(() =>
+    this.testPhase() === 'download' ? this.currentMbps() ?? this.downloadMbps() : this.downloadMbps(),
+  );
+  readonly displayUploadMbps = computed(() =>
+    this.testPhase() === 'upload' ? this.currentMbps() ?? this.uploadMbps() : this.uploadMbps(),
+  );
   readonly buttonLabel = computed(() => (this.isRunning() ? 'STOP' : 'GO'));
   readonly latestResult = computed(() => this.results()[0] ?? null);
   readonly historyRows = computed(() => this.results().slice(0, 4));
@@ -179,7 +190,9 @@ export class App {
   constructor() {
     addIcons({
       arrowDownCircleOutline,
+      arrowDownOutline,
       arrowUpCircleOutline,
+      arrowUpOutline,
       checkmarkCircleOutline,
       closeOutline,
       flashOutline,
@@ -250,12 +263,14 @@ export class App {
       this.notice.set('Measuring download using the OpenSpeedTest download endpoint.');
       const download = await this.measureDownload(normalizedUrl, this.abortController.signal);
       this.downloadMbps.set(download);
+      this.pushSpeedSample('download', download);
       await this.resetGaugeBeforeNextPhase('download-reset', 'Preparing upload test.');
 
       this.testPhase.set('upload');
       this.notice.set('Measuring upload using the OpenSpeedTest upload endpoint.');
       const upload = await this.measureUpload(normalizedUrl, this.abortController.signal);
       this.uploadMbps.set(upload);
+      this.pushSpeedSample('upload', upload);
       await this.resetGaugeBeforeNextPhase('upload-reset', 'Finalizing result.');
 
       const completedResult = this.createCompletedResult(normalizedUrl, download, upload, latency);
@@ -364,6 +379,18 @@ export class App {
     return value === null ? '-' : Math.round(value).toString();
   }
 
+  formatPreciseLatency(value: number | null): string {
+    return value === null ? '-' : value.toFixed(value >= 10 ? 0 : 1);
+  }
+
+  sparkBars(samples: number[], currentValue: number | null): number[] {
+    const source = samples.length > 0 ? samples : fallbackSparkline(currentValue);
+    const visibleSamples = source.slice(-22);
+    const peak = Math.max(1, ...visibleSamples);
+
+    return visibleSamples.map((value) => Math.max(8, Math.round((value / peak) * 88)));
+  }
+
   formatResultDate(value: string): string {
     return new Intl.DateTimeFormat('en-US', {
       month: '2-digit',
@@ -467,7 +494,7 @@ export class App {
         const now = performance.now();
 
         if (now - lastUiUpdate > 120) {
-          this.updateSpeedProgress(downloadedBytes, startedAt, now, DOWNLOAD_DURATION_MS);
+          this.updateSpeedProgress('download', downloadedBytes, startedAt, now, DOWNLOAD_DURATION_MS);
           lastUiUpdate = now;
         }
       }
@@ -498,17 +525,30 @@ export class App {
       }
 
       uploadedBytes += uploadChunk.byteLength;
-      this.updateSpeedProgress(uploadedBytes, startedAt, performance.now(), UPLOAD_DURATION_MS);
+      this.updateSpeedProgress('upload', uploadedBytes, startedAt, performance.now(), UPLOAD_DURATION_MS);
     }
 
     return this.finalizeSpeed(uploadedBytes, startedAt);
   }
 
-  private updateSpeedProgress(bytes: number, startedAt: number, now: number, durationMs: number): void {
+  private updateSpeedProgress(
+    metric: HistoryMetric,
+    bytes: number,
+    startedAt: number,
+    now: number,
+    durationMs: number,
+  ): void {
     const elapsedSeconds = Math.max((now - startedAt) / 1000, 0.1);
     const mbps = (bytes * 8) / elapsedSeconds / 1_000_000;
-    this.currentMbps.set(roundMetric(mbps * 1.04));
+    const compensatedMbps = roundMetric(mbps * 1.04);
+    this.currentMbps.set(compensatedMbps);
+    this.pushSpeedSample(metric, compensatedMbps);
     this.phaseProgress.set(Math.min((now - startedAt) / durationMs, 1));
+  }
+
+  private pushSpeedSample(metric: HistoryMetric, value: number): void {
+    const target = metric === 'download' ? this.downloadSamples : this.uploadSamples;
+    target.update((samples) => [...samples.slice(-21), value]);
   }
 
   private async resetGaugeBeforeNextPhase(phase: TestPhase, notice: string): Promise<void> {
@@ -561,6 +601,8 @@ export class App {
     this.pingMs.set(null);
     this.jitterMs.set(null);
     this.currentMbps.set(null);
+    this.downloadSamples.set([]);
+    this.uploadSamples.set([]);
     this.phaseProgress.set(0);
   }
 
@@ -613,7 +655,7 @@ function getInitialServerUrl(): string {
 }
 
 function getInitialThemeMode(): ThemeMode {
-  return localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark';
+  return localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light';
 }
 
 function getStoredResults(): SpeedResult[] {
@@ -667,6 +709,14 @@ function isBlockedMixedContent(serverUrl: string): boolean {
 
 function roundMetric(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function fallbackSparkline(value: number | null): number[] {
+  if (value === null) {
+    return [18, 22, 20, 28, 34, 42, 40, 56, 68, 72, 76, 73, 78, 81, 79, 82, 80, 83, 82, 82, 83, 83];
+  }
+
+  return [value * 0.42, value * 0.58, value * 0.66, value * 0.72, value * 0.8, value * 0.9, value, value * 0.94];
 }
 
 function generateResultId(): string {

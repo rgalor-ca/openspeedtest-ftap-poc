@@ -1279,3 +1279,486 @@ ion-text[color='danger'] .notice {
     grid-column: 1 / -1;
   }
 }
+
+/* OpenSpeedTest-inspired dev branch surface */
+.speed-dashboard {
+  grid-template-rows: minmax(0, 1fr) auto auto auto;
+  gap: clamp(0.5rem, 1.5vh, 0.9rem);
+  width: min(100%, 56rem);
+}
+
+.speed-dashboard.has-results {
+  grid-template-rows: minmax(0, 1fr) auto auto auto auto;
+  align-content: stretch;
+  width: min(100%, 56rem);
+}
+
+.ost-layout {
+  display: grid;
+  grid-template-columns: minmax(17rem, 1.05fr) minmax(18rem, 0.95fr);
+  gap: clamp(0.8rem, 3.4vw, 2.2rem);
+  align-items: center;
+  min-height: 0;
+}
+
+.ost-gauge-column {
+  display: grid;
+  gap: clamp(0.45rem, 1.6vh, 0.85rem);
+  min-width: 0;
+  min-height: 0;
+}
+
+.dial-stage {
+  min-height: 0;
+  padding-bottom: 2.05rem;
+}
+
+.speed-gauge {
+  --gauge-size: clamp(16rem, min(45vw, 54vh), 24rem);
+  display: grid;
+  width: var(--gauge-size);
+  max-width: 100%;
+  padding: 0;
+  aspect-ratio: 1;
+  color: var(--app-ink);
+  background:
+    radial-gradient(circle at 50% 50%, var(--app-surface) 0 54%, transparent 55%),
+    conic-gradient(
+      from 225deg,
+      var(--phase-accent) 0 var(--gauge-sweep),
+      color-mix(in srgb, var(--app-muted) 24%, transparent) var(--gauge-sweep) 272deg,
+      transparent 272deg 360deg
+    );
+  border: 0;
+  border-radius: 50%;
+  filter: none;
+  place-items: center;
+  transition: --gauge-sweep 170ms linear;
+}
+
+.theme-light .speed-gauge {
+  background:
+    radial-gradient(circle at 50% 50%, #ffffff 0 54%, transparent 55%),
+    conic-gradient(
+      from 225deg,
+      #27aeee 0 var(--gauge-sweep),
+      #e5e5e8 var(--gauge-sweep) 272deg,
+      transparent 272deg 360deg
+    );
+}
+
+.speed-gauge.is-actionable {
+  cursor: pointer;
+}
+
+.speed-gauge::before {
+  inset: 11%;
+  background: var(--app-surface);
+  border-radius: 50%;
+}
+
+.theme-light .speed-gauge::before {
+  background: #ffffff;
+}
+
+.needle {
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  width: clamp(0.9rem, 2.6vw, 1.15rem);
+  height: clamp(0.9rem, 2.6vw, 1.15rem);
+  background: var(--app-surface);
+  border: 0.28rem solid var(--phase-accent);
+  box-shadow: 0 0 0 0.18rem color-mix(in srgb, var(--app-surface) 96%, transparent);
+  transform: translate(-50%, -50%) rotate(var(--needle-angle)) translateY(calc(var(--gauge-size) * -0.435));
+  transform-origin: 50% 50%;
+  transition: transform 170ms linear;
+}
+
+.theme-light .needle {
+  background: #ffffff;
+  box-shadow: 0 0 0 0.18rem #ffffff;
+}
+
+.gauge-readout {
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+}
+
+.gauge-readout ion-icon {
+  width: clamp(2.2rem, min(9vw, 7vh), 3.4rem);
+  height: clamp(2.2rem, min(9vw, 7vh), 3.4rem);
+  color: var(--phase-accent);
+}
+
+.gauge-readout strong {
+  max-width: 82%;
+  font-size: clamp(1.75rem, min(8vw, 7vh), 2.85rem);
+  font-weight: 800;
+  line-height: 1.02;
+  text-align: center;
+}
+
+.gauge-readout sup {
+  font-size: 0.38em;
+}
+
+.speed-gauge.is-complete .gauge-readout strong {
+  max-width: 94%;
+  font-size: clamp(1.25rem, 4.2vw, 1.65rem);
+  white-space: nowrap;
+}
+
+.gauge-readout span {
+  color: color-mix(in srgb, var(--app-muted) 80%, transparent);
+  font-size: clamp(0.72rem, 1.8vw, 0.86rem);
+  font-weight: 700;
+}
+
+.tick {
+  color: color-mix(in srgb, var(--app-ink) 64%, transparent);
+  font-size: clamp(0.8rem, min(2.8vw, 2.1vh), 1.05rem);
+  font-weight: 750;
+}
+
+.theme-light .tick {
+  color: #6d6d73;
+}
+
+.tick-0 { left: 29%; bottom: 16%; }
+.tick-5 { left: 7%; top: 50%; }
+.tick-10 { left: 17%; top: 25%; }
+.tick-50 { left: 48%; top: 8%; }
+.tick-100 { right: 17%; top: 25%; }
+.tick-500 { right: 8%; top: 50%; }
+.tick-1000 { right: 18%; bottom: 16%; }
+
+.stop-run {
+  bottom: 0;
+  min-height: 2.05rem;
+  background: color-mix(in srgb, var(--app-panel) 84%, transparent);
+}
+
+.ost-endpoints {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 2rem;
+  gap: 0.65rem;
+  align-items: center;
+  width: min(100%, 24rem);
+  justify-self: center;
+  color: color-mix(in srgb, var(--app-muted) 48%, transparent);
+}
+
+.ost-endpoints ion-icon {
+  width: 1.65rem;
+  height: 1.65rem;
+}
+
+.endpoint-bar {
+  height: 0.38rem;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--app-muted) 24%, transparent);
+  border-radius: 999px;
+}
+
+.endpoint-bar span {
+  display: block;
+  width: var(--phase-progress);
+  height: 100%;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--phase-accent) 72%, transparent), var(--phase-accent));
+  border-radius: inherit;
+  transition: width 180ms linear;
+}
+
+.ost-panel-column {
+  display: grid;
+  gap: clamp(0.6rem, 1.6vh, 1rem);
+  min-width: 0;
+}
+
+.ost-speed-card,
+.ost-latency-card,
+.ost-result-summary article {
+  background: color-mix(in srgb, var(--app-panel) 82%, var(--app-surface-deep));
+  border: 1px solid color-mix(in srgb, var(--app-line) 72%, transparent);
+}
+
+.theme-light .ost-speed-card,
+.theme-light .ost-latency-card,
+.theme-light .ost-result-summary article {
+  background: #f0f0f1;
+  border-color: transparent;
+}
+
+.ost-speed-card {
+  display: grid;
+  grid-template-columns: minmax(6.8rem, 0.78fr) minmax(8rem, 1fr);
+  gap: clamp(0.45rem, 1.6vw, 0.9rem);
+  align-items: center;
+  min-width: 0;
+  min-height: clamp(5rem, 16vh, 7rem);
+  padding: clamp(0.6rem, 2vw, 0.9rem);
+}
+
+.ost-card-value {
+  display: grid;
+  min-width: 0;
+}
+
+.ost-card-value p,
+.ost-latency-card p {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0;
+  color: var(--app-ink);
+  font-size: clamp(0.78rem, 2.1vw, 0.96rem);
+  font-weight: 850;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.ost-card-value ion-icon,
+.ost-latency-card ion-icon,
+.ost-result-summary ion-icon {
+  color: #27aeee;
+}
+
+.ost-card-value strong,
+.ost-latency-card strong,
+.ost-result-summary strong {
+  color: var(--app-ink);
+  font-family: 'Segoe UI', var(--ion-font-family);
+  font-size: clamp(1.65rem, min(6.3vw, 5.4vh), 2.35rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.ost-card-value span,
+.ost-latency-card span,
+.ost-result-summary em {
+  color: color-mix(in srgb, var(--app-ink) 74%, var(--app-muted));
+  font-size: clamp(0.82rem, 2.2vw, 1.05rem);
+  font-style: normal;
+  font-weight: 650;
+}
+
+.mini-chart {
+  display: flex;
+  align-items: end;
+  justify-content: stretch;
+  gap: 1px;
+  height: clamp(3.6rem, 11vh, 4.9rem);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.mini-chart span {
+  flex: 1 1 0;
+  min-width: 2px;
+  background: linear-gradient(180deg, #43c0f3, #16a8ea);
+  transition: height 180ms linear;
+}
+
+.ost-latency-card {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+  min-height: clamp(5rem, 15vh, 6.7rem);
+  padding: clamp(0.6rem, 2vw, 0.9rem);
+}
+
+.ost-latency-card div {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  min-width: 0;
+}
+
+.server-strip {
+  width: min(100%, 34rem);
+}
+
+.ost-result-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(0.45rem, 1.5vw, 0.75rem);
+  width: min(100%, 52rem);
+  justify-self: center;
+}
+
+.ost-result-summary article {
+  display: grid;
+  justify-items: center;
+  min-width: 0;
+  padding: clamp(0.55rem, 1.7vw, 0.85rem);
+}
+
+.ost-result-summary span {
+  color: var(--app-ink);
+  font-size: clamp(0.68rem, 1.7vw, 0.82rem);
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.ost-result-summary strong {
+  font-size: clamp(1.35rem, min(4.8vw, 4vh), 2rem);
+}
+
+.ost-result-meta {
+  display: grid;
+  justify-items: center;
+  gap: 0.2rem;
+  width: min(100%, 38rem);
+  justify-self: center;
+  padding-top: 0.35rem;
+  border-top: 0.22rem solid #4ac5f4;
+  text-align: center;
+}
+
+.ost-result-meta span,
+.ost-result-meta strong {
+  overflow: hidden;
+  max-width: 100%;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ost-result-meta span {
+  color: var(--app-ink);
+  font-size: clamp(0.72rem, 2vw, 0.86rem);
+  font-weight: 800;
+}
+
+.ost-result-meta strong {
+  color: var(--app-ink);
+  font-size: clamp(0.75rem, 2vw, 0.9rem);
+}
+
+.ost-result-meta button {
+  min-height: 1.85rem;
+  padding: 0 0.75rem;
+  color: var(--app-blue);
+  background: transparent;
+  border: 0;
+  font-weight: 800;
+}
+
+.notice {
+  justify-self: center;
+  width: min(100%, 48rem);
+}
+
+@media (max-width: 760px) {
+  .speed-dashboard,
+  .speed-dashboard.has-results {
+    width: min(100%, 28rem);
+  }
+
+  .ost-layout {
+    grid-template-columns: 1fr;
+    gap: clamp(0.45rem, 1.2vh, 0.7rem);
+  }
+
+  .dial-stage {
+    padding-bottom: 1.5rem;
+  }
+
+  .speed-gauge {
+    --gauge-size: clamp(13rem, min(72vw, 38vh), 18.5rem);
+  }
+
+  .ost-panel-column {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .ost-speed-card {
+    grid-template-columns: 1fr;
+    min-height: 5.2rem;
+    padding: 0.55rem;
+  }
+
+  .mini-chart {
+    height: 2.05rem;
+  }
+
+  .ost-latency-card {
+    grid-column: 1 / -1;
+    min-height: 4.5rem;
+  }
+
+  .ost-result-summary {
+    gap: 0.35rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .speed-dashboard,
+  .speed-dashboard.has-results {
+    gap: 0.4rem;
+  }
+
+  .ost-card-value p,
+  .ost-latency-card p {
+    font-size: 0.68rem;
+  }
+
+  .ost-card-value strong,
+  .ost-latency-card strong {
+    font-size: clamp(1.25rem, min(6vw, 3.6vh), 1.65rem);
+  }
+
+  .ost-card-value span,
+  .ost-latency-card span {
+    font-size: 0.72rem;
+  }
+
+  .server-strip {
+    grid-template-columns: minmax(0, 1fr) 2rem 2rem minmax(0, 1fr);
+  }
+
+  .server-icon {
+    width: 2rem;
+  }
+
+  .ost-result-summary article {
+    padding: 0.42rem 0.25rem;
+  }
+
+  .ost-result-summary span {
+    font-size: 0.58rem;
+  }
+
+  .ost-result-summary strong {
+    font-size: clamp(1.05rem, 4.7vw, 1.35rem);
+  }
+
+  .ost-result-summary em {
+    font-size: 0.65rem;
+  }
+}
+
+@media (max-height: 720px) {
+  .speed-gauge {
+    --gauge-size: clamp(12.5rem, min(58vw, 36vh), 16.8rem);
+  }
+
+  .ost-speed-card {
+    min-height: 4.65rem;
+  }
+
+  .mini-chart {
+    height: 2.25rem;
+  }
+
+  .ost-latency-card {
+    min-height: 4.1rem;
+  }
+
+  .ost-endpoints,
+  .notice {
+    display: none;
+  }
+}
