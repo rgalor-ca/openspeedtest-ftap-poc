@@ -75,11 +75,11 @@
                 <ion-icon name="flash-outline"></ion-icon>
                 {{ formatLatency(pingMs()) }}
               </span>
-              <span class="latency-value download">
+              <span class="latency-value download" [class.is-muted]="jitterMs() === null">
                 <ion-icon name="arrow-down-circle-outline"></ion-icon>
                 {{ formatLatency(jitterMs()) }}
               </span>
-              <span class="latency-value upload">
+              <span class="latency-value upload" [class.is-muted]="uploadMbps() === null">
                 <ion-icon name="arrow-up-circle-outline"></ion-icon>
                 {{ uploadMbps() === null ? '-' : formatLatency(jitterMs()) }}
               </span>
@@ -153,11 +153,11 @@
               <ion-icon name="flash-outline"></ion-icon>
               {{ formatLatency(pingMs()) }}
             </span>
-            <span class="latency-value download">
+            <span class="latency-value download" [class.is-muted]="jitterMs() === null">
               <ion-icon name="arrow-down-circle-outline"></ion-icon>
               {{ formatLatency(jitterMs()) }}
             </span>
-            <span class="latency-value upload">
+            <span class="latency-value upload" [class.is-muted]="uploadMbps() === null">
               <ion-icon name="arrow-up-circle-outline"></ion-icon>
               {{ uploadMbps() === null ? '-' : formatLatency(jitterMs()) }}
             </span>

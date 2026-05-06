@@ -285,8 +285,12 @@ ion-button {
   gap: 0.28rem;
 }
 
-.latency-value ion-icon:first-child {
+.latency-value:not(.download):not(.upload) ion-icon:first-child {
   color: var(--app-yellow);
+}
+
+.latency-value.is-muted ion-icon:first-child {
+  color: var(--app-muted);
 }
 
 .dial-stage {
