@@ -487,6 +487,131 @@ ion-text[color='danger'] .notice {
   color: var(--app-danger);
 }
 
+.speed-dashboard.has-results {
+  grid-template-rows: minmax(0, auto);
+  align-content: center;
+}
+
+.complete-card {
+  display: grid;
+  gap: clamp(0.85rem, 2.5vh, 1.35rem);
+  width: min(100%, 52rem);
+  max-height: 100%;
+  justify-self: center;
+  padding: clamp(0.85rem, 2.4vw, 1.15rem);
+  overflow: hidden;
+  background: color-mix(in srgb, var(--app-panel) 94%, var(--app-surface));
+  border: 1px solid var(--app-line);
+  border-radius: 0.5rem;
+  box-shadow: 0 24px 58px color-mix(in srgb, var(--app-shadow) 55%, transparent);
+}
+
+.complete-metrics {
+  width: 100%;
+}
+
+.complete-body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(11rem, 0.78fr);
+  gap: clamp(0.8rem, 2.4vw, 1.5rem);
+  align-items: center;
+  min-width: 0;
+}
+
+.complete-go {
+  display: grid;
+  width: clamp(4.75rem, min(12vw, 16vh), 5.9rem);
+  aspect-ratio: 1;
+  place-items: center;
+  color: var(--app-ink);
+  background:
+    linear-gradient(var(--app-panel), var(--app-panel)) padding-box,
+    linear-gradient(145deg, var(--app-cyan), var(--app-blue)) border-box;
+  border: 2px solid transparent;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 0.45rem color-mix(in srgb, var(--app-cyan) 12%, transparent),
+    0 0 26px color-mix(in srgb, var(--app-cyan) 14%, transparent);
+}
+
+.complete-go span {
+  font-size: clamp(1.08rem, 3vw, 1.35rem);
+  font-weight: 650;
+}
+
+.complete-details {
+  display: grid;
+  gap: clamp(0.45rem, 1.4vh, 0.75rem);
+  min-width: 0;
+}
+
+.complete-line {
+  display: grid;
+  grid-template-columns: 2.45rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: center;
+  min-width: 0;
+}
+
+.complete-line > div:last-child,
+.complete-result {
+  display: grid;
+  min-width: 0;
+}
+
+.complete-line strong,
+.complete-result strong {
+  overflow: hidden;
+  color: var(--app-ink);
+  font-size: clamp(0.9rem, 2.2vw, 1.02rem);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.complete-line span,
+.complete-result span {
+  overflow: hidden;
+  color: var(--app-muted);
+  font-size: clamp(0.78rem, 2vw, 0.92rem);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.complete-line button,
+.complete-result button {
+  width: fit-content;
+  padding: 0;
+  color: var(--app-blue);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-weight: 650;
+}
+
+.complete-result {
+  gap: 0.38rem;
+  padding: clamp(0.7rem, 2vw, 0.95rem);
+  background: color-mix(in srgb, var(--app-surface-deep) 36%, transparent);
+  border: 1px solid var(--app-line);
+  border-radius: 0.45rem;
+}
+
+.complete-result span {
+  color: var(--app-blue);
+}
+
+.complete-result button {
+  min-height: 2rem;
+  margin-top: 0.25rem;
+  padding: 0 0.8rem;
+  color: var(--app-ink);
+  border: 1px solid var(--app-blue);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
 .result-panel {
   display: flex;
   align-items: center;
@@ -956,11 +1081,7 @@ ion-text[color='danger'] .notice {
   }
 
   .speed-dashboard.has-results {
-    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
-  }
-
-  .speed-dashboard.has-results .connection-row {
-    display: none;
+    width: min(100%, 52rem);
   }
 }
 
@@ -992,6 +1113,31 @@ ion-text[color='danger'] .notice {
     grid-template-columns: 1fr;
     gap: 0.55rem;
   }
+
+  .complete-card {
+    gap: 0.7rem;
+    padding: 0.8rem;
+  }
+
+  .complete-body {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .complete-result {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+
+  .complete-result strong {
+    grid-column: 1;
+  }
+
+  .complete-result button {
+    grid-row: 1 / 3;
+    grid-column: 2;
+    margin-top: 0;
+  }
 }
 
 @media (max-height: 720px) {
@@ -1022,6 +1168,19 @@ ion-text[color='danger'] .notice {
 
   .connection-row {
     display: none;
+  }
+
+  .complete-card {
+    gap: 0.55rem;
+    padding-block: 0.65rem;
+  }
+
+  .complete-body {
+    gap: 0.65rem;
+  }
+
+  .complete-details {
+    gap: 0.4rem;
   }
 
   .results-modal .history-chart {
