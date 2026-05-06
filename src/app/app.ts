@@ -188,6 +188,10 @@ export class App {
   }
 
   onTestFrameLoad(): void {
+    if (this.testStatus() !== 'starting' && this.testStatus() !== 'loading') {
+      return;
+    }
+
     const elapsedMs = Date.now() - this.testStartedAt;
     const finishLoad = () => {
       this.clearLoadTimeout();

@@ -43,7 +43,7 @@
           <ion-icon slot="start" name="save-outline"></ion-icon>
           Save
         </ion-button>
-        <ion-button fill="clear" color="medium" (click)="stopTest()" [disabled]="!activeTestUrl()">
+        <ion-button fill="clear" color="medium" (click)="stopTest()" [disabled]="testStatus() === 'idle'">
           <ion-icon slot="start" name="stop-circle-outline"></ion-icon>
           Stop
         </ion-button>
