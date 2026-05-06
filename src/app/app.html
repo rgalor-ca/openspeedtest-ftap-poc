@@ -4,6 +4,14 @@
       <div class="topbar">
         <ion-title>FTAP OpenSpeedTest POC</ion-title>
         <ion-buttons>
+          <ion-button fill="clear" class="nav-button">
+            <ion-icon slot="start" name="checkmark-circle-outline"></ion-icon>
+            Results
+          </ion-button>
+          <ion-button fill="clear" class="nav-button" (click)="toggleServerEditor()">
+            <ion-icon slot="start" name="settings-outline"></ion-icon>
+            Settings
+          </ion-button>
           <ion-button
             class="theme-button"
             fill="clear"
@@ -13,7 +21,7 @@
           >
             <ion-icon slot="icon-only" [name]="themeIcon()"></ion-icon>
           </ion-button>
-          <ion-button fill="clear" (click)="reloadTest()" [disabled]="!activeTestUrl()">
+          <ion-button fill="clear" (click)="reloadTest()" [disabled]="isRunning()">
             <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
           </ion-button>
         </ion-buttons>
@@ -21,44 +29,125 @@
     </ion-toolbar>
   </ion-header>
 
-  <ion-content [scrollY]="false" class="app-shell">
-    <section class="control-panel">
-      <div class="brand-row">
-        <div class="brand-mark">
-          <ion-icon name="speedometer-outline"></ion-icon>
-        </div>
-        <div>
-          <p class="eyebrow">Hybrid mobile speed test</p>
-          <h1>FTAP OpenSpeedTest POC</h1>
-        </div>
-      </div>
+  <ion-content [scrollY]="false" class="speed-shell">
+    <main class="speed-dashboard" [class.is-running]="isRunning()" [class.has-results]="testPhase() === 'complete'">
+      @if (showServerEditor()) {
+        <section class="settings-panel">
+          <ion-item class="server-field" lines="none">
+            <ion-icon slot="start" name="link-outline"></ion-icon>
+            <ion-input
+              label="OpenSpeedTest Server URL"
+              label-placement="stacked"
+              placeholder="http://10.0.2.2:3000"
+              [value]="serverUrl()"
+              (ionInput)="onServerUrlInput($event)"
+              clear-input="true"
+            ></ion-input>
+          </ion-item>
+          <div class="settings-actions">
+            <ion-button fill="outline" (click)="saveServer()">
+              <ion-icon slot="start" name="save-outline"></ion-icon>
+              Save
+            </ion-button>
+            <ion-button fill="clear" (click)="toggleServerEditor()">
+              <ion-icon slot="start" name="close-outline"></ion-icon>
+              Close
+            </ion-button>
+          </div>
+        </section>
+      }
 
-      <ion-item class="server-field" lines="none">
-        <ion-icon slot="start" name="server-outline"></ion-icon>
-        <ion-input
-          label="Server URL"
-          label-placement="stacked"
-          placeholder="http://192.168.1.10:3000"
-          [value]="serverUrl()"
-          (ionInput)="onServerUrlInput($event)"
-          clear-input="true"
-        ></ion-input>
-      </ion-item>
+      <section class="metrics-grid" aria-label="Speed test metrics">
+        <div class="metric-card metric-download">
+          <p>
+            <ion-icon name="arrow-down-circle-outline"></ion-icon>
+            <span>Download</span>
+            <small>Mbps</small>
+          </p>
+          <strong>{{ formatSpeed(downloadMbps()) }}</strong>
+        </div>
+        <div class="metric-card metric-upload">
+          <p>
+            <ion-icon name="arrow-up-circle-outline"></ion-icon>
+            <span>Upload</span>
+            <small>Mbps</small>
+          </p>
+          <strong>{{ formatSpeed(uploadMbps()) }}</strong>
+        </div>
+        <div class="latency-row">
+          <span>Ping <small>ms</small></span>
+          <span class="latency-value">
+            <ion-icon name="flash-outline"></ion-icon>
+            {{ formatLatency(pingMs()) }}
+          </span>
+          <span class="latency-value download">
+            <ion-icon name="arrow-down-circle-outline"></ion-icon>
+            {{ formatLatency(jitterMs()) }}
+          </span>
+          <span class="latency-value upload">
+            <ion-icon name="arrow-up-circle-outline"></ion-icon>
+            {{ uploadMbps() === null ? '-' : formatLatency(jitterMs()) }}
+          </span>
+        </div>
+      </section>
 
-      <div class="actions">
-        <ion-button class="primary-action" (click)="startTest()">
-          <ion-icon slot="start" name="play-outline"></ion-icon>
-          <span class="button-label">{{ startButtonLabel() }}</span>
-        </ion-button>
-        <ion-button fill="outline" (click)="saveServer()">
-          <ion-icon slot="start" name="save-outline"></ion-icon>
-          <span class="button-label save-label">Save</span>
-        </ion-button>
-        <ion-button fill="clear" color="medium" (click)="stopTest()" [disabled]="testStatus() === 'idle'">
-          <ion-icon slot="start" name="stop-circle-outline"></ion-icon>
-          <span class="button-label stop-label">Stop</span>
-        </ion-button>
-      </div>
+      <section
+        class="dial-stage"
+        [style.--gauge-sweep]="gaugeProgress()"
+        [style.--needle-angle]="needleAngle()"
+        [style.--phase-progress]="progressWidth()"
+        [style.--phase-accent]="accentColor()"
+      >
+        @if (testPhase() === 'idle' || testPhase() === 'stopped' || testPhase() === 'error') {
+          <button class="go-ring" type="button" (click)="handleGoButton()">
+            <span>{{ buttonLabel() }}</span>
+          </button>
+        } @else {
+          <div class="speed-gauge" aria-hidden="true">
+            <span class="tick tick-0">0</span>
+            <span class="tick tick-5">5</span>
+            <span class="tick tick-10">10</span>
+            <span class="tick tick-50">50</span>
+            <span class="tick tick-100">100</span>
+            <span class="tick tick-250">250</span>
+            <span class="tick tick-500">500</span>
+            <span class="tick tick-750">750</span>
+            <span class="tick tick-1000">1000</span>
+            <span class="needle"></span>
+            <div class="gauge-readout">
+              <strong>{{ formatSpeed(primaryMetric()) }}</strong>
+              <span>{{ testPhase() === 'upload' ? 'Upload' : 'Download' }} Mbps</span>
+            </div>
+          </div>
+          @if (isRunning()) {
+            <button class="stop-run" type="button" (click)="stopTest()">Stop</button>
+          }
+        }
+      </section>
+
+      <section class="server-strip">
+        <div class="server-side">
+          <strong>FTAP Client</strong>
+          <span>Local test device</span>
+        </div>
+        <div class="server-icon">
+          <ion-icon name="person-circle-outline"></ion-icon>
+        </div>
+        <div class="server-icon">
+          <ion-icon name="globe-outline"></ion-icon>
+        </div>
+        <div class="server-side server-target">
+          <strong>OpenSpeedTest</strong>
+          <span>{{ serverHost() }}</span>
+          <button type="button" (click)="toggleServerEditor()">Change Server</button>
+        </div>
+      </section>
+
+      <section class="connection-row">
+        <span>Connections</span>
+        <strong>Multi</strong>
+        <em>Single</em>
+      </section>
 
       @if (notice()) {
         <ion-text [color]="noticeTone()">
@@ -66,35 +155,28 @@
         </ion-text>
       }
 
-      <div class="status-row" [class.is-active]="testStatus() !== 'idle'">
-        <span class="status-dot"></span>
-        <span>{{ testStatusLabel() }}</span>
-      </div>
-    </section>
+      @if (testPhase() === 'complete') {
+        <section class="result-panel">
+          <div class="share-row">
+            <span>Share</span>
+            <span class="share-dot"></span>
+            <span class="share-dot"></span>
+            <span class="share-dot"></span>
+            <small>Result ID {{ resultId() }}</small>
+          </div>
+          <div class="recommendation">
+            <strong>How likely is it that you would recommend this FTAP speed test?</strong>
+            <div class="score-row">
+              @for (score of recommendationScores; track score) {
+                <button type="button">{{ score }}</button>
+              }
+            </div>
+            <p><span>Not at all likely</span><span>Extremely likely</span></p>
+          </div>
+        </section>
+      }
 
-    <section class="test-shell" [class.is-empty]="!trustedTestUrl() && !isTestLoading()">
-      @if (isTestLoading()) {
-        <div class="frame-overlay">
-          <ion-spinner name="crescent"></ion-spinner>
-          <p>{{ testStatusLabel() }}</p>
-        </div>
-      }
-      @if (trustedTestUrl()) {
-        <iframe
-          title="FTAP OpenSpeedTest POC"
-          [src]="trustedTestUrl()"
-          (load)="onTestFrameLoad()"
-          allow="fullscreen"
-          referrerpolicy="no-referrer"
-          scrolling="no"
-        ></iframe>
-      } @else if (!isTestLoading()) {
-        <div class="empty-state">
-          <ion-icon name="cellular-outline"></ion-icon>
-          <h2>No active test</h2>
-          <p>Awaiting FTAP OpenSpeedTest POC server connection.</p>
-        </div>
-      }
-    </section>
+      <div class="phase-line" aria-hidden="true"></div>
+    </main>
   </ion-content>
 </ion-app>

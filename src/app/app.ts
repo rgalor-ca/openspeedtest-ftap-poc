@@ -1,5 +1,4 @@
 import { Component, computed, effect, signal } from '@angular/core';
-import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { Capacitor } from '@capacitor/core';
 import {
@@ -11,21 +10,24 @@ import {
   IonIcon,
   IonInput,
   IonItem,
-  IonSpinner,
   IonText,
   IonTitle,
   IonToolbar,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
 import {
-  cellularOutline,
+  arrowDownCircleOutline,
+  arrowUpCircleOutline,
+  checkmarkCircleOutline,
+  closeOutline,
+  flashOutline,
+  globeOutline,
+  linkOutline,
   moonOutline,
-  playOutline,
+  personCircleOutline,
   refreshOutline,
   saveOutline,
-  serverOutline,
-  speedometerOutline,
-  stopCircleOutline,
+  settingsOutline,
   sunnyOutline,
 } from 'ionicons/icons';
 
@@ -34,8 +36,12 @@ const THEME_STORAGE_KEY = 'ftap-theme-mode';
 const LOCAL_NETWORK_SERVER_URL = 'http://192.168.0.13:3000';
 const ANDROID_EMULATOR_SERVER_URL = 'http://10.0.2.2:3000';
 const GITHUB_PAGES_HOST = 'rgalor-ca.github.io';
-const MIN_STARTING_STATUS_MS = 5000;
+const DOWNLOAD_DURATION_MS = 6500;
+const UPLOAD_DURATION_MS = 6500;
+const UPLOAD_CHUNK_BYTES = 2 * 1024 * 1024;
+
 type ThemeMode = 'dark' | 'light';
+type TestPhase = 'idle' | 'ping' | 'download' | 'upload' | 'complete' | 'error' | 'stopped';
 
 @Component({
   selector: 'app-root',
@@ -49,7 +55,6 @@ type ThemeMode = 'dark' | 'light';
     IonIcon,
     IonInput,
     IonItem,
-    IonSpinner,
     IonText,
     IonTitle,
     IonToolbar,
@@ -59,56 +64,87 @@ type ThemeMode = 'dark' | 'light';
 })
 export class App {
   readonly serverUrl = signal(getInitialServerUrl());
-  readonly activeTestUrl = signal('');
-  readonly notice = signal('FTAP OpenSpeedTest POC server expected.');
+  readonly notice = signal('Ready to run a basic OpenSpeedTest-powered check.');
   readonly noticeTone = signal<'medium' | 'success' | 'danger'>('medium');
-  readonly testStatus = signal<'idle' | 'starting' | 'loading' | 'loaded' | 'error'>('idle');
+  readonly testPhase = signal<TestPhase>('idle');
   readonly themeMode = signal<ThemeMode>(getInitialThemeMode());
+  readonly showServerEditor = signal(false);
+  readonly downloadMbps = signal<number | null>(null);
+  readonly uploadMbps = signal<number | null>(null);
+  readonly pingMs = signal<number | null>(null);
+  readonly jitterMs = signal<number | null>(null);
+  readonly currentMbps = signal<number | null>(null);
+  readonly phaseProgress = signal(0);
+  readonly resultId = signal(generateResultId());
+  readonly recommendationScores = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
 
-  readonly trustedTestUrl = computed<SafeResourceUrl | null>(() => {
-    const url = this.activeTestUrl();
-    return url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
-  });
-  readonly testStatusLabel = computed(() => {
-    switch (this.testStatus()) {
-      case 'starting':
-        return 'Starting speed test now';
-      case 'loading':
-        return 'Loading FTAP OpenSpeedTest POC';
-      case 'loaded':
-        return 'Speed test loaded';
-      case 'error':
-        return 'Speed test did not load';
-      default:
-        return 'No active test';
-    }
-  });
-  readonly isTestLoading = computed(
-    () => this.testStatus() === 'starting' || this.testStatus() === 'loading',
-  );
-  readonly startButtonLabel = computed(() =>
-    this.testStatus() === 'idle' || this.testStatus() === 'error' ? 'Start test' : 'Restart test',
+  readonly isRunning = computed(() =>
+    ['ping', 'download', 'upload'].includes(this.testPhase()),
   );
   readonly isDarkMode = computed(() => this.themeMode() === 'dark');
   readonly themeIcon = computed(() => (this.isDarkMode() ? 'sunny-outline' : 'moon-outline'));
   readonly themeButtonLabel = computed(() =>
     this.isDarkMode() ? 'Switch to light mode' : 'Switch to dark mode',
   );
+  readonly serverHost = computed(() => {
+    try {
+      return new URL(this.serverUrl()).host;
+    } catch {
+      return 'Server not set';
+    }
+  });
+  readonly phaseLabel = computed(() => {
+    switch (this.testPhase()) {
+      case 'ping':
+        return 'Checking ping';
+      case 'download':
+        return 'Testing download';
+      case 'upload':
+        return 'Testing upload';
+      case 'complete':
+        return 'Results';
+      case 'error':
+        return 'Unable to test';
+      case 'stopped':
+        return 'Stopped';
+      default:
+        return 'Ready';
+    }
+  });
+  readonly primaryMetric = computed(() => {
+    if (this.testPhase() === 'upload') {
+      return this.currentMbps() ?? this.uploadMbps();
+    }
 
-  private loadTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  private statusTransitionTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  private testStartedAt = 0;
+    if (this.testPhase() === 'complete') {
+      return this.downloadMbps();
+    }
 
-  constructor(private readonly sanitizer: DomSanitizer) {
+    return this.currentMbps() ?? this.downloadMbps();
+  });
+  readonly gaugeProgress = computed(() => `${Math.min(this.speedToGauge(this.primaryMetric()), 270)}deg`);
+  readonly needleAngle = computed(() => `${-135 + Math.min(this.speedToGauge(this.primaryMetric()), 270)}deg`);
+  readonly progressWidth = computed(() => `${Math.round(this.phaseProgress() * 100)}%`);
+  readonly accentColor = computed(() => (this.testPhase() === 'upload' ? '#bf69ff' : '#22e6e1'));
+  readonly buttonLabel = computed(() => (this.isRunning() ? 'STOP' : 'GO'));
+
+  private abortController: AbortController | null = null;
+  private stopRequested = false;
+
+  constructor() {
     addIcons({
-      cellularOutline,
+      arrowDownCircleOutline,
+      arrowUpCircleOutline,
+      checkmarkCircleOutline,
+      closeOutline,
+      flashOutline,
+      globeOutline,
+      linkOutline,
       moonOutline,
-      playOutline,
+      personCircleOutline,
       refreshOutline,
       saveOutline,
-      serverOutline,
-      speedometerOutline,
-      stopCircleOutline,
+      settingsOutline,
       sunnyOutline,
     });
 
@@ -124,62 +160,93 @@ export class App {
     this.serverUrl.set(String(detail.value ?? ''));
   }
 
-  startTest(): void {
-    const testUrl = this.createOpenSpeedTestUrl();
-
-    if (!testUrl) {
-      this.noticeTone.set('danger');
-      this.notice.set('Enter a valid FTAP OpenSpeedTest POC server URL that starts with http:// or https://.');
-      this.testStatus.set('error');
+  async handleGoButton(): Promise<void> {
+    if (this.isRunning()) {
+      this.stopTest();
       return;
     }
 
-    this.clearLoadTimeout();
-    this.clearStatusTransitionTimeout();
-    this.testStartedAt = Date.now();
-    this.testStatus.set('starting');
-    this.activeTestUrl.set('');
-    this.noticeTone.set('medium');
-    this.notice.set('Starting speed test now.');
-    this.statusTransitionTimeoutId = setTimeout(() => {
-      if (this.testStatus() === 'starting') {
-        this.testStatus.set('loading');
-        this.notice.set('Loading FTAP OpenSpeedTest POC.');
-        this.activeTestUrl.set(testUrl);
-      }
-    }, 1200);
-    this.loadTimeoutId = setTimeout(() => {
-      if (this.testStatus() === 'starting' || this.testStatus() === 'loading') {
-        this.testStatus.set('error');
-        this.noticeTone.set('danger');
-        this.notice.set('FTAP OpenSpeedTest POC did not finish loading. Check the server URL and network access.');
-      }
-    }, 12000);
+    await this.startTest();
   }
 
-  reloadTest(): void {
-    const url = this.activeTestUrl();
+  async startTest(): Promise<void> {
+    const normalizedUrl = this.normalizeServerUrl();
 
-    if (!url) {
+    if (!normalizedUrl) {
+      this.testPhase.set('error');
+      this.noticeTone.set('danger');
+      this.notice.set('Enter a valid OpenSpeedTest server URL that starts with http:// or https://.');
       return;
     }
 
-    const parsedUrl = new URL(url);
-    parsedUrl.searchParams.set('_reload', Date.now().toString());
-    this.clearLoadTimeout();
-    this.clearStatusTransitionTimeout();
-    this.testStartedAt = Date.now();
-    this.testStatus.set('loading');
-    this.noticeTone.set('medium');
-    this.notice.set('Reloading speed test.');
-    this.loadTimeoutId = setTimeout(() => {
-      if (this.testStatus() === 'loading') {
-        this.testStatus.set('error');
-        this.noticeTone.set('danger');
-        this.notice.set('FTAP OpenSpeedTest POC did not finish reloading. Check the server URL and network access.');
+    if (isBlockedMixedContent(normalizedUrl)) {
+      this.testPhase.set('error');
+      this.noticeTone.set('danger');
+      this.notice.set('This HTTPS page requires an HTTPS OpenSpeedTest server URL.');
+      return;
+    }
+
+    this.resetRunState();
+    this.serverUrl.set(normalizedUrl);
+    localStorage.setItem(SERVER_STORAGE_KEY, normalizedUrl);
+    this.abortController = new AbortController();
+    this.stopRequested = false;
+
+    try {
+      this.testPhase.set('ping');
+      this.noticeTone.set('medium');
+      this.notice.set('Pinging the OpenSpeedTest server.');
+      const latency = await this.measurePing(normalizedUrl, this.abortController.signal);
+      this.pingMs.set(latency.ping);
+      this.jitterMs.set(latency.jitter);
+
+      this.testPhase.set('download');
+      this.notice.set('Measuring download using the OpenSpeedTest download endpoint.');
+      const download = await this.measureDownload(normalizedUrl, this.abortController.signal);
+      this.downloadMbps.set(download);
+
+      this.testPhase.set('upload');
+      this.notice.set('Measuring upload using the OpenSpeedTest upload endpoint.');
+      const upload = await this.measureUpload(normalizedUrl, this.abortController.signal);
+      this.uploadMbps.set(upload);
+
+      this.testPhase.set('complete');
+      this.phaseProgress.set(1);
+      this.currentMbps.set(null);
+      this.resultId.set(generateResultId());
+      this.noticeTone.set('success');
+      this.notice.set('FTAP OpenSpeedTest POC completed.');
+    } catch (error) {
+      if (this.stopRequested || this.abortController?.signal.aborted) {
+        this.testPhase.set('stopped');
+        this.noticeTone.set('medium');
+        this.notice.set('Speed test stopped.');
+        return;
       }
-    }, 12000);
-    this.activeTestUrl.set(parsedUrl.toString());
+
+      this.testPhase.set('error');
+      this.currentMbps.set(null);
+      this.phaseProgress.set(0);
+      this.noticeTone.set('danger');
+      this.notice.set(getTestErrorMessage(error));
+    } finally {
+      this.abortController = null;
+      this.stopRequested = false;
+    }
+  }
+
+  stopTest(): void {
+    this.stopRequested = true;
+    this.abortController?.abort();
+    this.currentMbps.set(null);
+    this.phaseProgress.set(0);
+    this.testPhase.set('stopped');
+    this.noticeTone.set('medium');
+    this.notice.set('Speed test stopped.');
+  }
+
+  async reloadTest(): Promise<void> {
+    await this.startTest();
   }
 
   saveServer(): void {
@@ -191,59 +258,165 @@ export class App {
       return;
     }
 
+    if (isBlockedMixedContent(normalizedUrl)) {
+      this.noticeTone.set('danger');
+      this.notice.set('Use an HTTPS OpenSpeedTest server URL when running this app from GitHub Pages.');
+      return;
+    }
+
     localStorage.setItem(SERVER_STORAGE_KEY, normalizedUrl);
     this.serverUrl.set(normalizedUrl);
+    this.showServerEditor.set(false);
     this.noticeTone.set('success');
     this.notice.set('Server URL saved on this device.');
   }
 
-  stopTest(): void {
-    this.clearLoadTimeout();
-    this.clearStatusTransitionTimeout();
-    this.activeTestUrl.set('');
-    this.testStatus.set('idle');
-    this.noticeTone.set('medium');
-    this.notice.set('Test stopped.');
+  toggleServerEditor(): void {
+    this.showServerEditor.update((value) => !value);
   }
 
   toggleTheme(): void {
     this.themeMode.set(this.isDarkMode() ? 'light' : 'dark');
   }
 
-  onTestFrameLoad(): void {
-    if (this.testStatus() !== 'starting' && this.testStatus() !== 'loading') {
-      return;
+  formatSpeed(value: number | null): string {
+    if (value === null) {
+      return '---';
     }
 
-    const elapsedMs = Date.now() - this.testStartedAt;
-    const finishLoad = () => {
-      this.clearLoadTimeout();
-      this.clearStatusTransitionTimeout();
-      this.testStatus.set('loaded');
-      this.noticeTone.set('success');
-      this.notice.set('FTAP OpenSpeedTest POC loaded. Basic speed test is running.');
-    };
-
-    if (this.testStatus() === 'starting' && elapsedMs < MIN_STARTING_STATUS_MS) {
-      this.clearStatusTransitionTimeout();
-      this.statusTransitionTimeoutId = setTimeout(finishLoad, MIN_STARTING_STATUS_MS - elapsedMs);
-      return;
+    if (value >= 100) {
+      return value.toFixed(2);
     }
 
-    finishLoad();
+    if (value >= 10) {
+      return value.toFixed(2);
+    }
+
+    return value.toFixed(1);
   }
 
-  private createOpenSpeedTestUrl(): string | null {
-    const normalizedUrl = this.normalizeServerUrl();
+  formatLatency(value: number | null): string {
+    return value === null ? '-' : Math.round(value).toString();
+  }
 
-    if (!normalizedUrl) {
-      return null;
+  private async measurePing(baseUrl: string, signal: AbortSignal): Promise<{ ping: number; jitter: number }> {
+    const durations: number[] = [];
+
+    for (let index = 0; index < 6; index += 1) {
+      const startedAt = performance.now();
+      const response = await fetch(this.endpoint(baseUrl, 'upload', `ping=${Date.now()}-${index}`), {
+        cache: 'no-store',
+        signal,
+      });
+
+      if (!response.ok) {
+        throw new Error('OpenSpeedTest ping endpoint did not respond.');
+      }
+
+      durations.push(performance.now() - startedAt);
+      this.phaseProgress.set((index + 1) / 6);
+      await delay(80, signal);
     }
 
-    const testUrl = new URL(normalizedUrl);
-    testUrl.searchParams.set('Run', '');
-    testUrl.searchParams.set('_t', Date.now().toString());
-    return testUrl.toString();
+    const average = durations.reduce((sum, value) => sum + value, 0) / durations.length;
+    const jitter =
+      durations
+        .slice(1)
+        .reduce((sum, value, index) => sum + Math.abs(value - durations[index]), 0) /
+      Math.max(1, durations.length - 1);
+
+    return {
+      ping: roundMetric(average),
+      jitter: roundMetric(jitter),
+    };
+  }
+
+  private async measureDownload(baseUrl: string, signal: AbortSignal): Promise<number> {
+    const startedAt = performance.now();
+    const endAt = startedAt + DOWNLOAD_DURATION_MS;
+    let downloadedBytes = 0;
+    let lastUiUpdate = 0;
+
+    while (performance.now() < endAt) {
+      const response = await fetch(this.endpoint(baseUrl, 'downloading', `download=${Date.now()}`), {
+        cache: 'no-store',
+        signal,
+      });
+
+      if (!response.ok) {
+        throw new Error('OpenSpeedTest download endpoint did not respond.');
+      }
+
+      if (!response.body) {
+        const payload = await response.arrayBuffer();
+        downloadedBytes += payload.byteLength;
+        continue;
+      }
+
+      const reader = response.body.getReader();
+
+      while (performance.now() < endAt) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          break;
+        }
+
+        downloadedBytes += value.byteLength;
+        const now = performance.now();
+
+        if (now - lastUiUpdate > 120) {
+          this.updateSpeedProgress(downloadedBytes, startedAt, now, DOWNLOAD_DURATION_MS);
+          lastUiUpdate = now;
+        }
+      }
+
+      await reader.cancel().catch(() => undefined);
+    }
+
+    return this.finalizeSpeed(downloadedBytes, startedAt);
+  }
+
+  private async measureUpload(baseUrl: string, signal: AbortSignal): Promise<number> {
+    const startedAt = performance.now();
+    const endAt = startedAt + UPLOAD_DURATION_MS;
+    let uploadedBytes = 0;
+    const uploadChunk = new Uint8Array(UPLOAD_CHUNK_BYTES);
+    uploadChunk.fill(7);
+
+    while (performance.now() < endAt) {
+      const response = await fetch(this.endpoint(baseUrl, 'upload', `upload=${Date.now()}`), {
+        body: uploadChunk,
+        cache: 'no-store',
+        method: 'POST',
+        signal,
+      });
+
+      if (!response.ok) {
+        throw new Error('OpenSpeedTest upload endpoint did not respond.');
+      }
+
+      uploadedBytes += uploadChunk.byteLength;
+      this.updateSpeedProgress(uploadedBytes, startedAt, performance.now(), UPLOAD_DURATION_MS);
+    }
+
+    return this.finalizeSpeed(uploadedBytes, startedAt);
+  }
+
+  private updateSpeedProgress(bytes: number, startedAt: number, now: number, durationMs: number): void {
+    const elapsedSeconds = Math.max((now - startedAt) / 1000, 0.1);
+    const mbps = (bytes * 8) / elapsedSeconds / 1_000_000;
+    this.currentMbps.set(roundMetric(mbps * 1.04));
+    this.phaseProgress.set(Math.min((now - startedAt) / durationMs, 1));
+  }
+
+  private finalizeSpeed(bytes: number, startedAt: number): number {
+    const elapsedSeconds = Math.max((performance.now() - startedAt) / 1000, 0.1);
+    return roundMetric(((bytes * 8) / elapsedSeconds / 1_000_000) * 1.04);
+  }
+
+  private endpoint(baseUrl: string, path: 'downloading' | 'upload', query: string): string {
+    return new URL(`${path}?${query}`, `${baseUrl}/`).toString();
   }
 
   private normalizeServerUrl(): string | null {
@@ -269,22 +442,22 @@ export class App {
     }
   }
 
-  private clearLoadTimeout(): void {
-    if (!this.loadTimeoutId) {
-      return;
-    }
-
-    clearTimeout(this.loadTimeoutId);
-    this.loadTimeoutId = null;
+  private resetRunState(): void {
+    this.downloadMbps.set(null);
+    this.uploadMbps.set(null);
+    this.pingMs.set(null);
+    this.jitterMs.set(null);
+    this.currentMbps.set(null);
+    this.phaseProgress.set(0);
   }
 
-  private clearStatusTransitionTimeout(): void {
-    if (!this.statusTransitionTimeoutId) {
-      return;
+  private speedToGauge(value: number | null): number {
+    if (!value || value <= 0) {
+      return 0;
     }
 
-    clearTimeout(this.statusTransitionTimeoutId);
-    this.statusTransitionTimeoutId = null;
+    const normalized = Math.min(Math.log10(value + 1) / Math.log10(1001), 1);
+    return normalized * 270;
   }
 }
 
@@ -304,4 +477,51 @@ function getInitialServerUrl(): string {
 
 function getInitialThemeMode(): ThemeMode {
   return localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark';
+}
+
+function isBlockedMixedContent(serverUrl: string): boolean {
+  return (
+    !Capacitor.isNativePlatform() &&
+    location.protocol === 'https:' &&
+    new URL(serverUrl).protocol === 'http:'
+  );
+}
+
+function roundMetric(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+function generateResultId(): string {
+  return Math.floor(10_000_000 + Math.random() * 90_000_000).toString();
+}
+
+function delay(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'));
+      return;
+    }
+
+    const timeout = setTimeout(resolve, ms);
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timeout);
+        reject(new DOMException('Aborted', 'AbortError'));
+      },
+      { once: true },
+    );
+  });
+}
+
+function getTestErrorMessage(error: unknown): string {
+  if (error instanceof TypeError) {
+    return 'OpenSpeedTest server could not be reached. Check the URL, CORS, HTTPS, and network access.';
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return 'Speed test failed. Check the OpenSpeedTest server and try again.';
 }
