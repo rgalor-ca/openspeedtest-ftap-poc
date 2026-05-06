@@ -1,3 +1,5 @@
+name: ftap-openspeedtest-poc
+
 services:
   openspeedtest:
     image: openspeedtest/latest
