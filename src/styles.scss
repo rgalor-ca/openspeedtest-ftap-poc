@@ -22,5 +22,10 @@
 
 html,
 body {
-  background: #fcfdfb;
+  background: #0d1110;
+}
+
+html[data-theme='light'],
+html[data-theme='light'] body {
+  background: #f7faf8;
 }

@@ -1,12 +1,23 @@
-<ion-app>
+<ion-app [class.theme-dark]="isDarkMode()" [class.theme-light]="!isDarkMode()">
   <ion-header class="ion-no-border">
     <ion-toolbar>
-      <ion-title>FTAP OpenSpeedTest POC</ion-title>
-      <ion-buttons slot="end">
-        <ion-button fill="clear" (click)="reloadTest()" [disabled]="!activeTestUrl()">
-          <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
-        </ion-button>
-      </ion-buttons>
+      <div class="topbar">
+        <ion-title>FTAP OpenSpeedTest POC</ion-title>
+        <ion-buttons>
+          <ion-button
+            class="theme-button"
+            fill="clear"
+            (click)="toggleTheme()"
+            [attr.aria-label]="themeButtonLabel()"
+            [title]="themeButtonLabel()"
+          >
+            <ion-icon slot="icon-only" [name]="themeIcon()"></ion-icon>
+          </ion-button>
+          <ion-button fill="clear" (click)="reloadTest()" [disabled]="!activeTestUrl()">
+            <ion-icon slot="icon-only" name="refresh-outline"></ion-icon>
+          </ion-button>
+        </ion-buttons>
+      </div>
     </ion-toolbar>
   </ion-header>
 

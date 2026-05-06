@@ -32,6 +32,7 @@ http://10.0.2.2:3000
 - Shows clear status messages such as starting, loading, loaded, stopped, and error.
 - Allows changing and saving the OpenSpeedTest server URL.
 - Allows stopping and restarting the embedded test.
+- Uses dark mode by default, with a toolbar button to switch between dark and light mode.
 
 ## Tech Stack
 

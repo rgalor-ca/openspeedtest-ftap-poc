@@ -15,6 +15,7 @@ This approach is recommended for the POC because OpenSpeedTest already provides 
 - Showing clear loading and error states.
 - Providing a hybrid Android shell.
 - Supporting local browser and emulator validation.
+- Providing a polished FTAP shell with dark mode by default and a persisted light/dark toggle.
 
 ## 2. Visual Architecture
 

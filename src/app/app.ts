@@ -1,4 +1,4 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, effect, signal } from '@angular/core';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormsModule } from '@angular/forms';
 import { Capacitor } from '@capacitor/core';
@@ -19,19 +19,23 @@ import {
 import { addIcons } from 'ionicons';
 import {
   cellularOutline,
+  moonOutline,
   playOutline,
   refreshOutline,
   saveOutline,
   serverOutline,
   speedometerOutline,
   stopCircleOutline,
+  sunnyOutline,
 } from 'ionicons/icons';
 
 const SERVER_STORAGE_KEY = 'openspeedtest-server-url';
+const THEME_STORAGE_KEY = 'ftap-theme-mode';
 const LOCAL_NETWORK_SERVER_URL = 'http://192.168.0.13:3000';
 const ANDROID_EMULATOR_SERVER_URL = 'http://10.0.2.2:3000';
 const GITHUB_PAGES_HOST = 'rgalor-ca.github.io';
 const MIN_STARTING_STATUS_MS = 5000;
+type ThemeMode = 'dark' | 'light';
 
 @Component({
   selector: 'app-root',
@@ -59,6 +63,7 @@ export class App {
   readonly notice = signal('FTAP OpenSpeedTest POC server expected.');
   readonly noticeTone = signal<'medium' | 'success' | 'danger'>('medium');
   readonly testStatus = signal<'idle' | 'starting' | 'loading' | 'loaded' | 'error'>('idle');
+  readonly themeMode = signal<ThemeMode>(getInitialThemeMode());
 
   readonly trustedTestUrl = computed<SafeResourceUrl | null>(() => {
     const url = this.activeTestUrl();
@@ -84,6 +89,11 @@ export class App {
   readonly startButtonLabel = computed(() =>
     this.testStatus() === 'idle' || this.testStatus() === 'error' ? 'Start test' : 'Restart test',
   );
+  readonly isDarkMode = computed(() => this.themeMode() === 'dark');
+  readonly themeIcon = computed(() => (this.isDarkMode() ? 'sunny-outline' : 'moon-outline'));
+  readonly themeButtonLabel = computed(() =>
+    this.isDarkMode() ? 'Switch to light mode' : 'Switch to dark mode',
+  );
 
   private loadTimeoutId: ReturnType<typeof setTimeout> | null = null;
   private statusTransitionTimeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -92,12 +102,20 @@ export class App {
   constructor(private readonly sanitizer: DomSanitizer) {
     addIcons({
       cellularOutline,
+      moonOutline,
       playOutline,
       refreshOutline,
       saveOutline,
       serverOutline,
       speedometerOutline,
       stopCircleOutline,
+      sunnyOutline,
+    });
+
+    effect(() => {
+      const theme = this.themeMode();
+      document.documentElement.dataset['theme'] = theme;
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
     });
   }
 
@@ -186,6 +204,10 @@ export class App {
     this.testStatus.set('idle');
     this.noticeTone.set('medium');
     this.notice.set('Test stopped.');
+  }
+
+  toggleTheme(): void {
+    this.themeMode.set(this.isDarkMode() ? 'light' : 'dark');
   }
 
   onTestFrameLoad(): void {
@@ -278,4 +300,8 @@ function getInitialServerUrl(): string {
   }
 
   return savedUrl ?? LOCAL_NETWORK_SERVER_URL;
+}
+
+function getInitialThemeMode(): ThemeMode {
+  return localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark';
 }
