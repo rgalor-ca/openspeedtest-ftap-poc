@@ -39,10 +39,20 @@ const ANDROID_EMULATOR_SERVER_URL = 'http://10.0.2.2:3000';
 const GITHUB_PAGES_HOST = 'rgalor-ca.github.io';
 const DOWNLOAD_DURATION_MS = 6500;
 const UPLOAD_DURATION_MS = 6500;
+const GAUGE_RESET_MS = 720;
 const UPLOAD_CHUNK_BYTES = 2 * 1024 * 1024;
 
 type ThemeMode = 'dark' | 'light';
-type TestPhase = 'idle' | 'ping' | 'download' | 'upload' | 'complete' | 'error' | 'stopped';
+type TestPhase =
+  | 'idle'
+  | 'ping'
+  | 'download'
+  | 'download-reset'
+  | 'upload'
+  | 'upload-reset'
+  | 'complete'
+  | 'error'
+  | 'stopped';
 type HistoryMetric = 'download' | 'upload';
 
 interface SpeedResult {
@@ -94,7 +104,10 @@ export class App {
   readonly resultId = signal(generateResultId());
 
   readonly isRunning = computed(() =>
-    ['ping', 'download', 'upload'].includes(this.testPhase()),
+    ['ping', 'download', 'download-reset', 'upload', 'upload-reset'].includes(this.testPhase()),
+  );
+  readonly isUploadPhase = computed(() =>
+    ['upload', 'upload-reset'].includes(this.testPhase()),
   );
   readonly isDarkMode = computed(() => this.themeMode() === 'dark');
   readonly themeIcon = computed(() => (this.isDarkMode() ? 'sunny-outline' : 'moon-outline'));
@@ -114,8 +127,12 @@ export class App {
         return 'Checking ping';
       case 'download':
         return 'Testing download';
+      case 'download-reset':
+        return 'Preparing upload';
       case 'upload':
         return 'Testing upload';
+      case 'upload-reset':
+        return 'Finalizing result';
       case 'complete':
         return 'Results';
       case 'error':
@@ -127,7 +144,7 @@ export class App {
     }
   });
   readonly primaryMetric = computed(() => {
-    if (this.testPhase() === 'upload') {
+    if (this.isUploadPhase()) {
       return this.currentMbps() ?? this.uploadMbps();
     }
 
@@ -140,7 +157,8 @@ export class App {
   readonly gaugeProgress = computed(() => `${Math.min(this.speedToGauge(this.primaryMetric()), 270)}deg`);
   readonly needleAngle = computed(() => `${-135 + Math.min(this.speedToGauge(this.primaryMetric()), 270)}deg`);
   readonly progressWidth = computed(() => `${Math.round(this.phaseProgress() * 100)}%`);
-  readonly accentColor = computed(() => (this.testPhase() === 'upload' ? '#bf69ff' : '#22e6e1'));
+  readonly accentColor = computed(() => (this.isUploadPhase() ? '#bf69ff' : '#22e6e1'));
+  readonly activeMetricLabel = computed(() => (this.isUploadPhase() ? 'Upload' : 'Download'));
   readonly buttonLabel = computed(() => (this.isRunning() ? 'STOP' : 'GO'));
   readonly latestResult = computed(() => this.results()[0] ?? null);
   readonly historyRows = computed(() => this.results().slice(0, 4));
@@ -232,11 +250,13 @@ export class App {
       this.notice.set('Measuring download using the OpenSpeedTest download endpoint.');
       const download = await this.measureDownload(normalizedUrl, this.abortController.signal);
       this.downloadMbps.set(download);
+      await this.resetGaugeBeforeNextPhase('download-reset', 'Preparing upload test.');
 
       this.testPhase.set('upload');
       this.notice.set('Measuring upload using the OpenSpeedTest upload endpoint.');
       const upload = await this.measureUpload(normalizedUrl, this.abortController.signal);
       this.uploadMbps.set(upload);
+      await this.resetGaugeBeforeNextPhase('upload-reset', 'Finalizing result.');
 
       const completedResult = this.createCompletedResult(normalizedUrl, download, upload, latency);
       this.testPhase.set('complete');
@@ -489,6 +509,18 @@ export class App {
     const mbps = (bytes * 8) / elapsedSeconds / 1_000_000;
     this.currentMbps.set(roundMetric(mbps * 1.04));
     this.phaseProgress.set(Math.min((now - startedAt) / durationMs, 1));
+  }
+
+  private async resetGaugeBeforeNextPhase(phase: TestPhase, notice: string): Promise<void> {
+    if (!this.abortController) {
+      return;
+    }
+
+    this.testPhase.set(phase);
+    this.notice.set(notice);
+    this.currentMbps.set(0);
+    this.phaseProgress.set(0);
+    await delay(GAUGE_RESET_MS, this.abortController.signal);
   }
 
   private finalizeSpeed(bytes: number, startedAt: number): number {

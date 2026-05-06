@@ -44,7 +44,12 @@
   </ion-header>
 
   <ion-content [scrollY]="false" class="speed-shell">
-    <main class="speed-dashboard" [class.is-running]="isRunning()" [class.has-results]="testPhase() === 'complete'">
+    <main
+      class="speed-dashboard"
+      [class.is-running]="isRunning()"
+      [class.is-gauge-resetting]="testPhase() === 'download-reset' || testPhase() === 'upload-reset'"
+      [class.has-results]="testPhase() === 'complete'"
+    >
       @if (testPhase() === 'complete') {
         <section class="complete-card" aria-label="Completed speed test result">
           <section class="metrics-grid complete-metrics" aria-label="Completed speed test metrics">
@@ -184,7 +189,7 @@
               <span class="needle"></span>
               <div class="gauge-readout">
                 <strong>{{ formatSpeed(primaryMetric()) }}</strong>
-                <span>{{ testPhase() === 'upload' ? 'Upload' : 'Download' }} Mbps</span>
+                <span>{{ activeMetricLabel() }} Mbps</span>
               </div>
             </div>
             @if (isRunning()) {
