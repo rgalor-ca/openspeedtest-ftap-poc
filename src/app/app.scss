@@ -1288,9 +1288,10 @@ ion-text[color='danger'] .notice {
 }
 
 .speed-dashboard.has-results {
-  grid-template-rows: minmax(0, 1fr) auto auto auto auto;
-  align-content: stretch;
-  width: min(100%, 56rem);
+  grid-template-rows: minmax(0, 1fr) auto auto auto;
+  align-content: center;
+  gap: clamp(0.38rem, 1vh, 0.7rem);
+  width: min(100%, 54rem);
 }
 
 .ost-layout {
@@ -1351,6 +1352,11 @@ ion-text[color='danger'] .notice {
   cursor: pointer;
 }
 
+.speed-gauge:focus-visible {
+  outline: 2px solid var(--phase-accent);
+  outline-offset: 0.18rem;
+}
+
 .speed-gauge::before {
   inset: 11%;
   background: var(--app-surface);
@@ -1405,9 +1411,13 @@ ion-text[color='danger'] .notice {
 }
 
 .speed-gauge.is-complete .gauge-readout strong {
-  max-width: 94%;
-  font-size: clamp(1.25rem, 4.2vw, 1.65rem);
+  max-width: 68%;
+  font-size: clamp(0.9rem, min(2.6vw, 3vh), 1.25rem);
   white-space: nowrap;
+}
+
+.speed-gauge.is-complete .tick {
+  opacity: 0.62;
 }
 
 .gauge-readout span {
@@ -1580,6 +1590,46 @@ ion-text[color='danger'] .notice {
   width: min(100%, 34rem);
 }
 
+.speed-dashboard.has-results .ost-layout {
+  grid-template-columns: minmax(16rem, 0.9fr) minmax(18rem, 1fr);
+  gap: clamp(0.8rem, 2.6vw, 1.6rem);
+}
+
+.speed-dashboard.has-results .ost-gauge-column {
+  gap: clamp(0.25rem, 1vh, 0.5rem);
+}
+
+.speed-dashboard.has-results .dial-stage {
+  padding-bottom: 0.35rem;
+}
+
+.speed-dashboard.has-results .speed-gauge {
+  --gauge-size: clamp(14rem, min(34vw, 43vh), 18.8rem);
+}
+
+.speed-dashboard.has-results .ost-panel-column {
+  gap: clamp(0.45rem, 1.2vh, 0.7rem);
+}
+
+.speed-dashboard.has-results .ost-speed-card {
+  min-height: clamp(4.25rem, 12.5vh, 5.35rem);
+  padding: clamp(0.48rem, 1.4vw, 0.7rem);
+}
+
+.speed-dashboard.has-results .mini-chart {
+  height: clamp(2.35rem, 7.5vh, 3.15rem);
+}
+
+.speed-dashboard.has-results .ost-latency-card {
+  min-height: clamp(4rem, 11.5vh, 5rem);
+  padding: clamp(0.45rem, 1.4vw, 0.65rem);
+}
+
+.speed-dashboard.has-results .server-strip {
+  width: min(100%, 30rem);
+  margin-block: 0.2rem 0.15rem;
+}
+
 .ost-result-summary {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1595,6 +1645,10 @@ ion-text[color='danger'] .notice {
   padding: clamp(0.55rem, 1.7vw, 0.85rem);
 }
 
+.speed-dashboard.has-results .ost-result-summary article {
+  padding: clamp(0.42rem, 1.2vw, 0.62rem);
+}
+
 .ost-result-summary span {
   color: var(--app-ink);
   font-size: clamp(0.68rem, 1.7vw, 0.82rem);
@@ -1604,6 +1658,10 @@ ion-text[color='danger'] .notice {
 
 .ost-result-summary strong {
   font-size: clamp(1.35rem, min(4.8vw, 4vh), 2rem);
+}
+
+.speed-dashboard.has-results .ost-result-summary strong {
+  font-size: clamp(1.2rem, min(4vw, 3.4vh), 1.65rem);
 }
 
 .ost-result-meta {
@@ -1656,9 +1714,18 @@ ion-text[color='danger'] .notice {
     width: min(100%, 28rem);
   }
 
+  .speed-dashboard.has-results {
+    gap: 0.35rem;
+  }
+
   .ost-layout {
     grid-template-columns: 1fr;
     gap: clamp(0.45rem, 1.2vh, 0.7rem);
+  }
+
+  .speed-dashboard.has-results .ost-layout {
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
   }
 
   .dial-stage {
@@ -1669,9 +1736,17 @@ ion-text[color='danger'] .notice {
     --gauge-size: clamp(13rem, min(72vw, 38vh), 18.5rem);
   }
 
+  .speed-dashboard.has-results .speed-gauge {
+    --gauge-size: clamp(11.25rem, min(58vw, 26vh), 14.5rem);
+  }
+
   .ost-panel-column {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.45rem;
+  }
+
+  .speed-dashboard.has-results .ost-panel-column {
+    gap: 0.35rem;
   }
 
   .ost-speed-card {
@@ -1684,9 +1759,17 @@ ion-text[color='danger'] .notice {
     height: 2.05rem;
   }
 
+  .speed-dashboard.has-results .mini-chart {
+    height: 1.65rem;
+  }
+
   .ost-latency-card {
     grid-column: 1 / -1;
     min-height: 4.5rem;
+  }
+
+  .speed-dashboard.has-results .ost-latency-card {
+    min-height: 3.65rem;
   }
 
   .ost-result-summary {
@@ -1719,12 +1802,21 @@ ion-text[color='danger'] .notice {
     grid-template-columns: minmax(0, 1fr) 2rem 2rem minmax(0, 1fr);
   }
 
+  .speed-dashboard.has-results .server-strip {
+    width: min(100%, 24rem);
+    margin-block: 0.1rem;
+  }
+
   .server-icon {
     width: 2rem;
   }
 
   .ost-result-summary article {
     padding: 0.42rem 0.25rem;
+  }
+
+  .speed-dashboard.has-results .ost-result-summary article {
+    padding: 0.34rem 0.2rem;
   }
 
   .ost-result-summary span {
@@ -1745,6 +1837,10 @@ ion-text[color='danger'] .notice {
     --gauge-size: clamp(12.5rem, min(58vw, 36vh), 16.8rem);
   }
 
+  .speed-dashboard.has-results .speed-gauge {
+    --gauge-size: clamp(11rem, min(31vw, 29vh), 13.8rem);
+  }
+
   .ost-speed-card {
     min-height: 4.65rem;
   }
@@ -1755,6 +1851,16 @@ ion-text[color='danger'] .notice {
 
   .ost-latency-card {
     min-height: 4.1rem;
+  }
+
+  .speed-dashboard.has-results .ost-speed-card,
+  .speed-dashboard.has-results .ost-latency-card {
+    min-height: 3.8rem;
+  }
+
+  .speed-dashboard.has-results .ost-card-value strong,
+  .speed-dashboard.has-results .ost-latency-card strong {
+    font-size: clamp(1.3rem, min(4.5vw, 3.7vh), 1.85rem);
   }
 
   .ost-endpoints,
